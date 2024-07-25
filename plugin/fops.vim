@@ -24,6 +24,15 @@ function! s:fops_create_command_alias(source, alias)
          \ .'? ("'.a:source.'") : ("'.a:alias.'"))'
 endfunction
 
+" File Path - Echoes out the current file's path.
+command!
+    \ -nargs=*
+    \ -complete=customlist,fops#commands#file_path_complete
+    \ FopPath
+    \ call fops#commands#file_path(<q-args>)
+call s:fops_create_command_alias('FopPath', 'FilePath')
+call s:fops_create_command_alias('FopPath', 'FPath')
+
 " File Info - Effectively a wrapper for the Linux `file` command. Displays
 " information on the file and its contents.
 command!
@@ -53,7 +62,14 @@ call s:fops_create_command_alias('FopFind', 'FileFind')
 call s:fops_create_command_alias('FopFind', 'FFind')
 
 " Delete - Deletes a file.
-" TODO - implement this
+command!
+    \ -nargs=*
+    \ -complete=customlist,fops#commands#file_delete_complete
+    \ FopDelete
+    \ call fops#commands#file_delete(<q-args>)
+call s:fops_create_command_alias('FopDelete', 'FileDelete')
+call s:fops_create_command_alias('FopDelete', 'FDelete')
+
 
 " Copy - Saves a copy of the file in the current buffer.
 command!

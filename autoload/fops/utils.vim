@@ -43,6 +43,11 @@ function! fops#utils#str_cmp(str1, str2) abort
     return a:str1 is# a:str2
 endfunction
 
+" Compares two strings case-insensitively.
+function! fops#utils#str_cmp_case_insensitive(str1, str2) abort
+    return a:str1 is? a:str2
+endfunction
+
 " Returns true if the string begins with the given prefix.
 function! fops#utils#str_begins_with(str, prefix) abort
     let l:cmp_len = len(a:prefix)
@@ -50,16 +55,125 @@ function! fops#utils#str_begins_with(str, prefix) abort
     return fops#utils#str_cmp(l:cmp_str, a:prefix)
 endfunction
 
+" Returns true if the string begins with the given prefix.
+function! fops#utils#str_begins_with_case_insensitive(str, prefix) abort
+    let l:cmp_len = len(a:prefix)
+    let l:cmp_str = strpart(a:str, 0, l:cmp_len)
+    return fops#utils#str_cmp_case_insensitive(l:cmp_str, a:prefix)
+endfunction
+
+
+" ================================ User Input ================================ "
+" Reads input from the user with the provided prompt and returns it.
+function! fops#utils#input_str(msg) abort
+    return input(a:msg)
+endfunction
+
+" Propmts the user for a yes/no response. Returns `true` if yes was selected,
+" and `false` if no was selected.
+function! fops#utils#input_yesno(msg) abort
+    let l:yes_values = ['y', 'yes', '1']
+    let l:no_values = ['n', 'no', '0']
+    
+    " iterate until a value decision has been made
+    while v:true
+        let l:choice = trim(fops#utils#input_str(a:msg))
+
+        " did the user select yes?
+        for l:yv in l:yes_values
+            if fops#utils#str_cmp_case_insensitive(l:choice, l:yv)
+                return v:true
+            endif
+        endfor
+
+        " did the user select no?
+        for l:nv in l:no_values
+            if fops#utils#str_cmp_case_insensitive(l:choice, l:nv)
+                return v:false
+            endif
+        endfor
+    endwhile
+    return v:null
+endfunction
+
+" Reads user input and attempts to convert it to a number.
+function! fops#utils#input_number(msg) abort
+    return str2nr(fops#utils#input_str(msg))
+endfunction
+
+" Reads input from the user and attempts to convert it to an integer. The
+" `values` parameter should be a list of number values that are accepted
+" inputs. This function will repeatedly prompt until a value in the list is
+" specified. If the list is empty, all values are accepted.
+function! fops#utils#input_number_values(msg, values) abort
+    let l:values_len = len(a:values)
+
+    let l:num = 0
+    while v:true
+        " read input and attempt to convert to an integer
+        let l:num = fops#utils#input_number(a:msg)
+
+        " if a list of values was not provided, we're done; accept the first
+        " value the user inputs
+        if l:values_len == 0
+            break
+        endif
+
+        " otherwise, make sure the interpreted number is in the list
+        if index(a:values, l:num) != -1
+            break
+        endif
+    endwhile
+
+    return l:num
+endfunction
+
+
+" ============================== Vim Registers =============================== "
+" Returns the register character if the given register is a valid register
+" name. Returns v:null on a mismatch.
+function! fops#utils#reg_lookup(name) abort
+    let l:valid_registers = 'abcdefghijklmnopqrstuvwxyz' .
+                          \ 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' .
+                          \ '0123456789' .
+                          \ '"-:.%#=*+~_/'
+    let l:idx = match(l:valid_registers, a:name[0])
+    if l:idx < 0
+        return v:null
+    endif
+    return l:valid_registers[l:idx]
+endfunction
+
+" Writes to a register.
+function! fops#utils#reg_write(name, value) abort
+    let l:reg = fops#utils#reg_lookup(a:name)
+    if l:reg is v:null
+        call fops#utils#panic('Invalid register name: "' . a:name . '"')
+    endif
+    
+    call setreg(l:reg, a:value)
+endfunction
+
+" Reads from a register and returns its value.
+function! fops#utils#reg_read(name, value) abort
+    let l:reg = fops#utils#reg_lookup(a:name)
+    if l:reg is v:null
+        call fops#utils#panic('Invalid register name: "' . a:name . '"')
+    endif
+
+    return getreg(l:reg)
+endfunction
+
 
 " ============================= File Operations ============================== "
 " Returns a string path to the file in the current buffer.
-function! fops#utils#get_current_file()
+function! fops#utils#get_current_file() abort
     let l:out = expand("%:p")
     return l:out
 endfunction
 
 " Returns Vim's current working directory.
-function! fops#utils#get_pwd()
+function! fops#utils#get_pwd() abort
     return getcwd()
 endfunction
 
@@ -84,6 +198,13 @@ function! fops#utils#path_remove_extension(path) abort
     return fnamemodify(a:path, ':r')
 endfunction
 
+" Modifies the given path and produces a copy with the new basename.
+function! fops#utils#path_set_basename(path, name) abort
+    let l:result = fops#utils#path_get_dirname(a:path)
+    let l:result .= '/' . fops#utils#path_get_basename(a:name)
+    return l:result
+endfunction
+
 " Returns true if the given path string points to a valid file.
 function! fops#utils#path_is_file(path) abort
     return filereadable(a:path)
@@ -95,18 +216,18 @@ function! fops#utils#path_is_dir(path) abort
 endfunction
 
 " Retrieves information about the given file.
-function! fops#utils#file_get_info(src_path)
+function! fops#utils#file_get_info(src_path) abort
     let l:cmd = 'file ' . a:src_path
     return trim(fops#utils#run_shell_command(l:cmd))
 endfunction
 
 " Retrieves the size of the given file. Returns the size, in bytes.
-function! fops#utils#file_get_size(src_path)
+function! fops#utils#file_get_size(src_path) abort
     return getfsize(a:src_path)
 endfunction
 
 " Returns a formatted file size string.
-function! fops#utils#format_file_size(bytes)
+function! fops#utils#format_file_size(bytes) abort
     let l:suffixes = ['B', 'KB', 'MB', 'GB', 'TB']
     let l:suffixes_len = len(l:suffixes)
     let l:count = 0
@@ -125,13 +246,13 @@ endfunction
 
 " Searches the given directory for a file with the given query string. The
 " entry is recursively searched for, and a list of matches is returned.
-function! fops#utils#file_find(dir, query)
-    let l:matches = split(globpath(a:dir, '**/' . a:query), "\n")
+function! fops#utils#file_find(dir, query) abort
+    let l:matches = globpath(a:dir, '**/' . a:query, v:false, v:true)
     return l:matches
 endfunction
 
 " Copies the file to the given destination path.
-function! fops#utils#file_copy(src_path, dst_path)
+function! fops#utils#file_copy(src_path, dst_path) abort
     " build a `cp` command (including `-r` for directories)
     let l:cmd = 'cp '
     if fops#utils#path_is_dir(a:src_path)
@@ -143,8 +264,31 @@ function! fops#utils#file_copy(src_path, dst_path)
     call fops#utils#run_shell_command(l:cmd)
 endfunction
 
+" Deletes the given file or directory. Directories are deleted recursively,
+" including everything within.
+function! fops#utils#file_delete(src_path) abort
+    " make sure the file exists
+    let l:is_file = fops#utils#path_is_file(a:src_path)
+    let l:is_dir = fops#utils#path_is_dir(a:src_path)
+    if !l:is_file && !l:is_dir
+        let l:errmsg = 'The file "' . a:src_path .
+                     \ '" does not exist and thus cannot be deleted.'
+        call fops#utils#panic(l:errmsg)
+    endif
+
+    " determine what deletion flags to use
+    let l:flags = ''
+    if fops#utils#path_is_dir(a:src_path)
+        let l:flags = 'rf'
+    endif
+    
+    if delete(a:src_path, l:flags) != 0
+        call fops#utils#panic('Failed to delete file "' . a:src_path . '".')
+    endif
+endfunction
+
 " Moves the file to the given destination path.
-function! fops#utils#file_move(src_path, dst_path)
+function! fops#utils#file_move(src_path, dst_path) abort
     " build a `mv` command
     let l:cmd = 'mv '
     let l:cmd .= shellescape(a:src_path) . ' '
@@ -157,7 +301,7 @@ endfunction
 " the same; only its name is changed.)
 "
 " Returns the new path of the renamed file.
-function! fops#utils#file_rename(src_path, name)
+function! fops#utils#file_rename(src_path, name) abort
     " build a full file path for the renamed file
     let l:dst_path = fops#utils#path_get_dirname(a:src_path)
     let l:dst_path .= '/' . fops#utils#path_get_basename(a:name)

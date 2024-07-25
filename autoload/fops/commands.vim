@@ -70,6 +70,13 @@ function! s:maybe_retarget_current_buffer(parser, path) abort
         return v:false
     endif
 
+    " if the given file is null, or an empty string, we'll assume the caller
+    " wants to edit a new, empty buffer
+    if a:path is v:null || fops#utils#str_cmp(a:path, '')
+        execute 'enew'
+        return v:true
+    endif
+
     " make sure the given file path is a valid file or directory
     if !fops#utils#path_is_file(a:path) && !fops#utils#path_is_dir(a:path)
         let l:errmsg .= 'The provided path (' . a:path .
@@ -96,11 +103,12 @@ function! s:get_src_file(parser) abort
     let l:source = argonaut#argparser#get_arg(a:parser, '-s')
     if len(l:source) > 0
         let l:result = l:source[0]
-        let l:errmsg .= 'The provided file path '
+        let l:errmsg .= 'The provided path (' . l:result . ') '
     " if not, select the current buffer's file
     else
         let l:result = fops#utils#get_current_file()
         let l:errmsg .= "The current buffer's file path "
+        let l:errmsg .= '(' . l:result . ') '
     endif
 
     " expand any environment variables or other symbols
@@ -119,11 +127,18 @@ endfunction
 " provided by the user.
 function! s:get_dst_file(...) abort
     let l:parser = a:1
+
+    " if a 'do_expand' parameter is specified, grab it
+    let l:do_expand = v:true
+    if a:0 > 1
+        let l:do_expand = a:2
+    endif
     
     " if an error message is specified, grab it
     let l:errmsg = 'No destination file path was provided.'
-    if a:0 > 1
-        let l:errmsg = a:2
+    if a:0 > 2
+        let l:errmsg = a:3
+    endif
 
     " the destination file should be the first extra/unnamed argument provided
     " by the user
@@ -131,9 +146,14 @@ function! s:get_dst_file(...) abort
     if len(l:extras) < 1
         call fops#utils#panic(l:errmsg)
     endif
+
+    let l:result = l:extras[0]
     
     " expand any environment variables or other symbols
-    return expand(l:extras[0])
+    if l:do_expand
+        let l:result = expand(l:result)
+    endif
+    return l:result
 endfunction
 
 " Takes in an input value from one of the Rename commands and ensures it
@@ -151,6 +171,36 @@ function! s:check_rename_input(str) abort
     let l:errmsg = 'The provided rename value ("' . a:str . '") must not ' .
                  \ 'contain any directories or path delimeters.'
     call fops#utils#panic(l:errmsg)
+endfunction
+
+
+" ============================ File Path Command ============================= "
+let s:file_path_argset = argonaut#argset#new([s:arg_help, s:arg_source])
+
+" Tab completion helper function for the path command.
+function! fops#commands#file_path_complete(arg, line, pos)
+    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_path_argset)
+endfunction
+
+" Main function for the path command.
+function! fops#commands#file_path(input) abort
+    try
+        call fops#utils#print_debug('Executing the file-path command.')
+
+        " parse command-line arguments
+        let l:parser = argonaut#argparser#new(s:file_path_argset)
+        call argonaut#argparser#parse(l:parser, a:input)
+        if s:maybe_show_help_menu(l:parser, s:file_path_argset)
+            return
+        endif
+    
+        " get the source file and display the path
+        let l:src = s:get_src_file(l:parser)
+        call fops#utils#print_debug('Source file: ' . l:src)
+        call fops#utils#print(expand(l:src))
+    catch
+        call fops#utils#print_error(v:exception)
+    endtry
 endfunction
 
 
@@ -257,12 +307,10 @@ function! fops#commands#file_find(input) abort
     
         " retrieve the first extra argument; we'll interpret this as the name
         " to search for
-        let l:query = s:get_dst_file(l:parser, 'No search query was provided.')
+        let l:query = s:get_dst_file(l:parser, v:false, 'No search query was provided.')
 
         call fops#utils#print_debug('Search directory: ' . l:src)
         call fops#utils#print_debug('Search query: ' . l:query)
-
-
 
         " search for the file and quit early if no matches were found
         let l:matches = fops#utils#file_find(l:src, l:query)
@@ -272,25 +320,109 @@ function! fops#commands#file_find(input) abort
             return
         endif
 
-        " if the user specified the `--edit` argument, take the first match
-        " and update the current buffer to open the file
-        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:matches[0])
-        if l:buffer_updated
-            if fops#config#get('show_success_prints')
-                let l:msg = 'Found ' . l:matches_len . ' match(es). ' .
-                          \ 'Buffer updated to edit first matched file (' .
-                          \ l:matches[0] . ').'
-                call s:print_success(l:msg)
-            endif
-            return
+        " otherwise, display all matches to the user (if we only have one
+        " match, just spit out the file name and nothing else)
+        if l:matches_len == 1
+            call fops#utils#print(l:matches[0])
+        else
+            let l:found_msg = 'Found ' . l:matches_len . ' match' .
+                            \ (l:matches_len == 1 ? ':' : 'es:')
+            call fops#utils#print(l:found_msg)
+            for l:idx in range(l:matches_len)
+                let l:match = l:matches[l:idx]
+                call fops#utils#print('' . (l:idx + 1) . '. ' . l:match)
+            endfor
         endif
 
-        " otherwise, display all matches to the user
-        call fops#utils#print('Found ' . l:matches_len . ' match(es):')
-        for l:idx in range(l:matches_len)
-            let l:match = l:matches[l:idx]
-            call fops#utils#print(' ' . (l:idx + 1) . '. ' . l:match)
-        endfor
+        " if the user specified the `--edit` argument, we'll open one of the
+        " matches in the current buffer
+        if argonaut#argparser#has_arg(l:parser, '-e')
+            " by default, we'll assume only one match was found
+            let l:selection = l:matches[0]
+
+            " otherwise, we'll ask the user to specify which of the matches
+            " should be opened in the current buffer
+            if l:matches_len > 1
+                let l:input_msg = 'Which file would you like to edit? ' .
+                                \ '(enter a value from 1 to ' . l:matches_len .
+                                \ ') '
+                let l:match_idx = fops#utils#input_number_values(l:input_msg, range(1, l:matches_len))
+                let l:selection = l:matches[l:match_idx - 1]
+            endif
+            
+            " update the current buffer with the selection
+            let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:selection)
+            if l:buffer_updated
+                if fops#config#get('show_success_prints')
+                    let l:msg = 'Buffer updated to edit file (' .
+                              \ l:selection . ').'
+                    call s:print_success(l:msg)
+                endif
+            endif
+        endif
+    catch
+        call fops#utils#print_error(v:exception)
+    endtry
+endfunction
+
+
+" ============================== Delete Command ============================== "
+let s:file_delete_argset = argonaut#argset#new([s:arg_help, s:arg_edit, s:arg_source])
+
+" Tab completion helper function for the delete command.
+function! fops#commands#file_delete_complete(arg, line, pos)
+    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_delete_argset)
+endfunction
+
+" Main function for the delete command.
+function! fops#commands#file_delete(input) abort
+    try
+        call fops#utils#print_debug('Executing the file-delete command.')
+
+        " parse command-line arguments
+        let l:parser = argonaut#argparser#new(s:file_delete_argset)
+        call argonaut#argparser#parse(l:parser, a:input)
+        if s:maybe_show_help_menu(l:parser, s:file_delete_argset)
+            return
+        endif
+    
+        " get the target file
+        let l:file = s:get_src_file(l:parser)
+        call fops#utils#print_debug('File to delete: ' . l:file)
+
+        " confirm with the user that they want to go through with the
+        " deletion. If they say no, return early
+        if fops#utils#path_is_file(l:file) && fops#config#get('prompt_for_delete_file')
+            let l:msg = 'Are you sure you want to delete the file: "' . 
+                      \ l:file . '"? (y/n) '
+            if !fops#utils#input_yesno(l:msg)
+                return
+            endif
+            echo ' '
+        elseif fops#utils#path_is_dir(l:file) && fops#config#get('prompt_for_delete_dir')
+            let l:msg = 'Are you sure you want to delete the directory: "' .
+                      \ l:file . '" and all files within it? (y/n) '
+            if !fops#utils#input_yesno(l:msg)
+                return
+            endif
+            echo ' '
+        endif
+
+        " attempt to delete the file
+        call fops#utils#file_delete(l:file)
+
+        " if the user requested it, update the buffer to point at an empty
+        " buffer
+        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, v:null)
+        
+        " show a success message
+        if fops#config#get('show_success_prints')
+            let l:msg = 'Deletion succeeded.'
+            if l:buffer_updated
+                let l:msg .= ' Buffer updated to edit an empty buffer.'
+            endif
+            call s:print_success(l:msg)
+        endif
     catch
         call fops#utils#print_error(v:exception)
     endtry
@@ -323,8 +455,15 @@ function! fops#commands#file_copy(input) abort
         call fops#utils#print_debug('Source file: ' . l:src)
         call fops#utils#print_debug('Destination file: ' . l:dst)
 
-        " TODO - if the destination file already exists, confirm with the user
-        " that it's OK to overwrite it!
+        " if the destination file already exists, confirm with the user that
+        " it's OK to overwrite it
+        if fops#utils#path_is_file(l:dst) && fops#config#get('prompt_for_overwrite_file')
+            let l:msg = 'File "' . l:dst . '" already exists. Overwrite? (y/n) '
+            if !fops#utils#input_yesno(l:msg)
+                return
+            endif
+            echo ' '
+        endif
 
         " attempt to copy the file
         call fops#utils#file_copy(l:src, l:dst)
@@ -371,8 +510,15 @@ function! fops#commands#file_move(input) abort
         call fops#utils#print_debug('Source file: ' . l:src)
         call fops#utils#print_debug('Destination file: ' . l:dst)
 
-        " TODO - if the destination file already exists, confirm with the user
-        " that it's OK to overwrite it!
+        " if the destination file already exists, confirm with the user that
+        " it's OK to overwrite it
+        if fops#utils#path_is_file(l:dst) && fops#config#get('prompt_for_overwrite_file')
+            let l:msg = 'File "' . l:dst . '" already exists. Overwrite? (y/n) '
+            if !fops#utils#input_yesno(l:msg)
+                return
+            endif
+            echo ' '
+        endif
 
         " attempt to move the file
         call fops#utils#file_move(l:src, l:dst)
@@ -415,13 +561,22 @@ function! fops#commands#file_rename(input) abort
     
         " get the source files and new name
         let l:src = s:get_src_file(l:parser)
-        let l:name = s:get_dst_file(l:parser)
+        let l:name = s:get_dst_file(l:parser, v:true, 'No new file name was provided.')
         call s:check_rename_input(l:name)
         call fops#utils#print_debug('Source file: ' . l:src)
         call fops#utils#print_debug('New name: ' . l:name)
 
-        " TODO - if the destination file already exists, confirm with the user
-        " that it's OK to overwrite it!
+
+        " if the destination file already exists, confirm with the user that
+        " it's OK to overwrite it
+        let l:dst = fops#utils#path_set_basename(l:src, l:name)
+        if fops#utils#path_is_file(l:dst) && fops#config#get('prompt_for_overwrite_file')
+            let l:msg = 'File "' . l:dst . '" already exists. Overwrite? (y/n) '
+            if !fops#utils#input_yesno(l:msg)
+                return
+            endif
+            echo ' '
+        endif
 
         " attempt to rename the file (i.e. set its basename)
         let l:dst = fops#utils#file_rename(l:src, l:name)
@@ -464,7 +619,7 @@ function! fops#commands#file_rename_extension(input) abort
     
         " get the source files and new extension
         let l:src = s:get_src_file(l:parser)
-        let l:ext = s:get_dst_file(l:parser)
+        let l:ext = s:get_dst_file(l:parser, v:true, 'No new file extension was provided.')
         call s:check_rename_input(l:ext)
 
         " sanitize the extension value, such that a dot is always at the
@@ -481,8 +636,16 @@ function! fops#commands#file_rename_extension(input) abort
         let l:name = fops#utils#path_get_basename(l:name)
         let l:name = l:name . l:ext
 
-        " TODO - if the destination file already exists, confirm with the user
-        " that it's OK to overwrite it!
+        " if the destination file already exists, confirm with the user that
+        " it's OK to overwrite it
+        let l:dst = fops#utils#path_set_basename(l:src, l:name)
+        if fops#utils#path_is_file(l:dst) && fops#config#get('prompt_for_overwrite_file')
+            let l:msg = 'File "' . l:dst . '" already exists. Overwrite? (y/n) '
+            if !fops#utils#input_yesno(l:msg)
+                return
+            endif
+            echo ' '
+        endif
 
         let l:dst = fops#utils#file_rename(l:src, l:name)
 

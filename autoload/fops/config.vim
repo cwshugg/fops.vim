@@ -9,6 +9,9 @@ let s:fops_config = {
     \ 'print_prefix': '',
     \ 'debug_print_prefix': 'FOPS-Debug: ',
     \ 'error_print_prefix': 'FOPS-Error: ',
+    \ 'prompt_for_overwrite_file': v:true,
+    \ 'prompt_for_delete_file': v:true,
+    \ 'prompt_for_delete_dir': v:true,
 \ }
 
 " Helper function that checks the given field name against the dictionary.
