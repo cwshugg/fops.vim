@@ -156,6 +156,25 @@ function! s:get_dst_file(...) abort
     return l:result
 endfunction
 
+" Returns the user-specific register name. It's retrieved from the
+" `--register` argument, or defaults to the unnamed register.
+function! s:get_register(parser) abort
+    let l:reg_input = argonaut#argparser#get_arg(a:parser, '-r')
+    if len(reg_input) == 0
+        return fops#utils#reg_lookup('"')
+    endif
+
+    " lookup the register name with the user's input, and throw an error if an
+    " invalid name was given
+    let l:reg = fops#utils#reg_lookup(l:reg_input)
+    if l:reg is v:null
+        let l:errmsg = 'Invalid register name: "' . l:reg_input . '".'
+        call fops#utils#panic(l:errmsg)
+    endif
+
+    return l:reg
+endfunction
+
 " Takes in an input value from one of the Rename commands and ensures it
 " doesn't have a dirname (meaning, it is only a basename and nothing else).
 function! s:check_rename_input(str) abort
@@ -666,44 +685,121 @@ function! fops#commands#file_rename_extension(input) abort
 endfunction
 
 
-" ============================ Yank Path Command ============================= "
-let s:file_yank_path_argset = argonaut#argset#new([s:arg_help, s:arg_edit, s:arg_source])
+" =============================== Yank Command =============================== "
+" The `-r`/`--register` argument is used by the yank command(s) in this plugin.
+" This allows the user to specify the register to store the yanked text into.
+" (By default, the unnamed/clipboard register is used.)
+let s:arg_register = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_register, argonaut#argid#new('-', 'r'))
+call argonaut#arg#add_argid(s:arg_register, argonaut#argid#new('--', 'register'))
+call argonaut#arg#set_description(s:arg_register,
+    \ 'Sets the register to store yanked text into. (The default is the unnamed register.)'
+\ )
+call argonaut#arg#set_value_required(s:arg_register, 1)
+call argonaut#arg#set_value_hint(s:arg_register, 'REGISTER_NAME')
 
-" Tab completion helper function for the yank_path command.
-function! fops#commands#file_yank_path_complete(arg, line, pos)
-    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_yank_path_argset)
+" This argument indicates that the user wishes to yank the full file path.
+let s:arg_yank_path = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_yank_path, argonaut#argid#new('-', 'yp'))
+call argonaut#arg#add_argid(s:arg_yank_path, argonaut#argid#new('--', 'yank-path'))
+call argonaut#arg#add_argid(s:arg_yank_path, argonaut#argid#new('y', 'p'))
+call argonaut#arg#set_description(s:arg_yank_path,
+    \ "Yanks the file's full path."
+\ )
+
+" This argument indicates that the user wishes to yank the file's basename.
+let s:arg_yank_basename = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('-', 'yb'))
+call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('-', 'yn'))
+call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('--', 'yank-name'))
+call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('--', 'yank-base'))
+call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('--', 'yank-basename'))
+call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('y', 'b'))
+call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('y', 'n'))
+call argonaut#arg#set_description(s:arg_yank_basename,
+    \ "Yanks the file's basename (the string appearing after the final path delimeter)."
+\ )
+
+" This argument indicates that the user wishes to yank the file's dirname.
+let s:arg_yank_dirname = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('-', 'yd'))
+call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('--', 'yank-dir'))
+call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('--', 'yank-dirname'))
+call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('y', 'd'))
+call argonaut#arg#set_description(s:arg_yank_dirname,
+    \ "Yanks the file's dirname (the full string appearing before the final path delimeter)."
+\ )
+
+" This argument indicates that the user wishes to yank the file's extension.
+let s:arg_yank_ext = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('-', 'ye'))
+call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('--', 'yank-ext'))
+call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('--', 'yank-extension'))
+call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('y', 'e'))
+call argonaut#arg#set_description(s:arg_yank_ext,
+    \ "Yanks the file's dirname (the full string appearing before the final path delimeter)."
+\ )
+
+
+let s:file_yank_argset = argonaut#argset#new([s:arg_help, s:arg_source, s:arg_register])
+call argonaut#argset#add_arg(s:file_yank_argset, s:arg_yank_path)
+call argonaut#argset#add_arg(s:file_yank_argset, s:arg_yank_basename)
+call argonaut#argset#add_arg(s:file_yank_argset, s:arg_yank_dirname)
+call argonaut#argset#add_arg(s:file_yank_argset, s:arg_yank_ext)
+
+" Tab completion helper function for the yank command.
+function! fops#commands#file_yank_complete(arg, line, pos)
+    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_yank_argset)
 endfunction
 
-function! fops#commands#file_yank_path(input) abort
-    " TODO - implement this
-    echo 'TODO - file_yank_path - ' . fops#utils#get_current_file()
-endfunction
+function! fops#commands#file_yank(input) abort
+    try
+        call fops#utils#print_debug('Executing the file-yank command.')
 
+        " parse command-line arguments
+        let l:parser = argonaut#argparser#new(s:file_yank_argset)
+        call argonaut#argparser#parse(l:parser, a:input)
+        if s:maybe_show_help_menu(l:parser, s:file_yank_argset)
+            return
+        endif
+        
+        " retrieve the source file and the register the user wants to write to
+        let l:path = s:get_src_file(l:parser)
+        let l:reg = s:get_register(l:parser)
+        call fops#utils#print_debug('Source file: ' . l:path)
+        call fops#utils#print_debug('Target register: ' . l:reg)
+        
+        " by default, we'll write the entire file path into the register
+        let l:reg_val = l:path
+        let l:success_msg = 'File path "' . l:reg_val . '" '
 
-" ============================ Yank Name Command ============================= "
-let s:file_yank_name_argset = argonaut#argset#new([s:arg_help, s:arg_edit, s:arg_source])
+        " but before doing so, examine the various possible arguments to
+        " determine if the user wants a specific portion of the file path to
+        " written into the register
+        if argonaut#argparser#has_arg(l:parser, '--yank-path')
+            let l:reg_val = l:path
+            let l:success_msg = 'File path "' . l:reg_val . '" '
+        elseif argonaut#argparser#has_arg(l:parser, '--yank-basename')
+            let l:reg_val = fops#utils#path_get_basename(l:path)
+            let l:success_msg = 'File basename "' . l:reg_val . '" '
+        elseif argonaut#argparser#has_arg(l:parser, '--yank-dirname')
+            let l:reg_val = fops#utils#path_get_dirname(l:path)
+            let l:success_msg = 'File dirname "' . l:reg_val . '" '
+        elseif argonaut#argparser#has_arg(l:parser, '--yank-extension')
+            let l:reg_val = fops#utils#path_get_extension(l:path)
+            let l:success_msg = 'File extension "' . l:reg_val . '" '
+        endif
 
-" Tab completion helper function for the yank_name command.
-function! fops#commands#file_yank_name_complete(arg, line, pos)
-    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_yank_name_argset)
-endfunction
+        " write the selected value into the register
+        call fops#utils#reg_write(l:reg, l:reg_val)
 
-function! fops#commands#file_yank_name(input) abort
-    " TODO - implement this
-    echo 'TODO - file_yank_name - ' . fops#utils#get_current_file()
-endfunction
-
-
-" ========================== Yank Extension Command ========================== "
-let s:file_yank_ext_argset = argonaut#argset#new([s:arg_help, s:arg_edit, s:arg_source])
-
-" Tab completion helper function for the yank_ext command.
-function! fops#commands#file_yank_ext_complete(arg, line, pos)
-    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_yank_ext_argset)
-endfunction
-
-function! fops#commands#file_yank_ext(input) abort
-    " TODO - implement this
-    echo 'TODO - file_yank_ext - ' . fops#utils#get_current_file()
+        " show a success message
+        if fops#config#get('show_success_prints')
+            let l:msg = l:success_msg . 'written to register @' . l:reg . '.'
+            call s:print_success(l:msg)
+        endif
+    catch
+        call fops#utils#print_error(v:exception)
+    endtry
 endfunction
 

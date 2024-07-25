@@ -107,33 +107,13 @@ command!
 call s:fops_create_command_alias('FopRenameExtension', 'FileRenameExtension')
 call s:fops_create_command_alias('FopRenameExtension', 'FRenameExtension')
 
-" Yank Path - Writes the full path to the current file into a register. (The
-" unnamed register by default.)
-command!
-    \ -nargs=*
-    \ -complete=customlist,fops#commands#file_yank_path_complete
-    \ FopYankPath
-    \ call fops#commands#file_yank_path(<q-args>)
-call s:fops_create_command_alias('FopYankPath', 'FileYankPath')
-call s:fops_create_command_alias('FopYankPath', 'FYankPath')
-
-" Yank Name - Writes the name of the current file into a register. (The
-" unnamed register by default.)
-command!
-    \ -nargs=*
-    \ -complete=customlist,fops#commands#file_yank_name_complete
-    \ FopYankName
-    \ call fops#commands#file_yank_name(<q-args>)
-call s:fops_create_command_alias('FopYankName', 'FileYankName')
-call s:fops_create_command_alias('FopYankName', 'FYankName')
-
-" Yank Extension - Writes the file extension of the current file into a
+" Yank - Writes the full path, or some other part of the file's path into a
 " register. (The unnamed register by default.)
 command!
     \ -nargs=*
-    \ -complete=customlist,fops#commands#file_yank_ext_complete
-    \ FopYankExtension
-    \ call fops#commands#file_yank_ext(<q-args>)
-call s:fops_create_command_alias('FopYankExtension', 'FileYankExtension')
-call s:fops_create_command_alias('FopYankExtension', 'FYankExtension')
+    \ -complete=customlist,fops#commands#file_yank_complete
+    \ FopYank
+    \ call fops#commands#file_yank(<q-args>)
+call s:fops_create_command_alias('FopYank', 'FileYank')
+call s:fops_create_command_alias('FopYank', 'FYank')
 
