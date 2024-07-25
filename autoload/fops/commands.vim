@@ -737,7 +737,7 @@ call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('--', 'yank-ext')
 call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('--', 'yank-extension'))
 call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('y', 'e'))
 call argonaut#arg#set_description(s:arg_yank_ext,
-    \ "Yanks the file's dirname (the full string appearing before the final path delimeter)."
+    \ "Yanks the file's extension."
 \ )
 
 
