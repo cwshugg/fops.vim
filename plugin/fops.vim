@@ -82,13 +82,6 @@ command!
     \ FileRename
     \ call fops#commands#file_rename(<q-args>)
 
-" RenameExtension - Renames the current file by modifying its extension.
-command!
-    \ -nargs=*
-    \ -complete=customlist,fops#commands#file_rename_extension_complete
-    \ FileRenameExtension
-    \ call fops#commands#file_rename_extension(<q-args>)
-
 " Yank - Writes the full path, or some other part of the file's path into a
 " register. (The unnamed register by default.)
 command!

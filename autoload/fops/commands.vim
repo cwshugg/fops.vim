@@ -38,25 +38,25 @@ call argonaut#arg#set_value_hint(s:arg_source, 'FILE_PATH')
 
 
 " ================================= Helpers ================================== "
-" Prints a success message. The print only occurs if success messages are
+" Prints a verbose message. The print only occurs if verbose messages are
 " enabled in the plugin's config.
-function! s:print_success(msg) abort
-    if fops#config#get('show_success_prints')
+function! s:print_verbose(msg) abort
+    if fops#config#get('show_verbose_prints')
         call fops#utils#print(a:msg)
     endif
 endfunction
 
-" Helper function that takes in an argparser object and argset, and shows the
-" help menu if the `--help` argument (defined above) is specified. Returns
-" true if the help menu was shown.
-function! s:maybe_show_help_menu(parser, argset) abort
+" Helper function that takes in an argparser object and shows the help menu if
+" the `--help` argument (defined above) is specified. Returns true if the help
+" menu was shown.
+function! s:maybe_show_help_menu(parser) abort
     " if `--help` was not provided, quit early
     if !argonaut#argparser#has_arg(a:parser, '-h')
         return v:false
     endif
     
     " show the argonaut built-in help menu
-    call argonaut#argset#show_help(a:argset)
+    call argonaut#argparser#show_help(a:parser)
     return v:true
 endfunction
 
@@ -85,7 +85,7 @@ function! s:maybe_retarget_current_buffer(parser, path) abort
     endif
 
     " open the new file in the current buffer
-    execute 'edit ' . a:path
+    :silent execute 'edit ' . a:path
 
     return v:true
 endfunction
@@ -111,8 +111,9 @@ function! s:get_src_file(parser) abort
         let l:errmsg .= '(' . l:result . ') '
     endif
 
-    " expand any environment variables or other symbols
-    let l:result = expand(l:result)
+    " expand any environment variables or other symbols, and expand it to be
+    " the absolute path
+    let l:result = fops#utils#path_get_absolute(expand(l:result))
 
     " make sure the path is a valid file or directory
     if !fops#utils#path_is_file(l:result) && !fops#utils#path_is_dir(l:result)
@@ -203,13 +204,13 @@ endfunction
 
 " Main function for the path command.
 function! fops#commands#file_path(input) abort
+    let l:parser = argonaut#argparser#new(s:file_path_argset)
     try
         call fops#utils#print_debug('Executing the file-path command.')
 
         " parse command-line arguments
-        let l:parser = argonaut#argparser#new(s:file_path_argset)
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser, s:file_path_argset)
+        if s:maybe_show_help_menu(l:parser)
             return
         endif
     
@@ -218,6 +219,7 @@ function! fops#commands#file_path(input) abort
         call fops#utils#print_debug('Source file: ' . l:src)
         call fops#utils#print(expand(l:src))
     catch
+        call s:maybe_show_help_menu(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -233,13 +235,13 @@ endfunction
 
 " Main function for the info command.
 function! fops#commands#file_info(input) abort
+    let l:parser = argonaut#argparser#new(s:file_info_argset)
     try
         call fops#utils#print_debug('Executing the file-info command.')
 
         " parse command-line arguments
-        let l:parser = argonaut#argparser#new(s:file_info_argset)
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser, s:file_info_argset)
+        if s:maybe_show_help_menu(l:parser)
             return
         endif
     
@@ -251,6 +253,7 @@ function! fops#commands#file_info(input) abort
         let l:info = fops#utils#file_get_info(l:src)
         call fops#utils#print(l:info)
     catch
+        call s:maybe_show_help_menu(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -266,13 +269,13 @@ endfunction
 
 " Main function for the size command.
 function! fops#commands#file_size(input) abort
+    let l:parser = argonaut#argparser#new(s:file_size_argset)
     try
         call fops#utils#print_debug('Executing the file-size command.')
 
         " parse command-line arguments
-        let l:parser = argonaut#argparser#new(s:file_size_argset)
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser, s:file_size_argset)
+        if s:maybe_show_help_menu(l:parser)
             return
         endif
     
@@ -287,6 +290,7 @@ function! fops#commands#file_size(input) abort
                   \ l:size_str . ')'
         call fops#utils#print(l:msg)
     catch
+        call s:maybe_show_help_menu(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -302,13 +306,13 @@ endfunction
 
 " Main function for the find command.
 function! fops#commands#file_find(input) abort
+    let l:parser = argonaut#argparser#new(s:file_find_argset)
     try
         call fops#utils#print_debug('Executing the file-find command.')
 
         " parse command-line arguments
-        let l:parser = argonaut#argparser#new(s:file_find_argset)
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser, s:file_find_argset)
+        if s:maybe_show_help_menu(l:parser)
             return
         endif
 
@@ -331,10 +335,15 @@ function! fops#commands#file_find(input) abort
         call fops#utils#print_debug('Search directory: ' . l:src)
         call fops#utils#print_debug('Search query: ' . l:query)
 
+        let l:pending_msg = 'Searching directory "' . l:src .
+                          \ '" for files matching "' . l:query . '"...'
+        call fops#utils#print_raw(l:pending_msg)
+
         " search for the file and quit early if no matches were found
         let l:matches = fops#utils#file_find(l:src, l:query)
         let l:matches_len = len(l:matches)
         if l:matches_len == 0
+            call fops#utils#print_raw_clear()
             call fops#utils#print('No matches found within "' . l:src . '".')
             return
         endif
@@ -346,6 +355,7 @@ function! fops#commands#file_find(input) abort
         else
             let l:found_msg = 'Found ' . l:matches_len . ' match' .
                             \ (l:matches_len == 1 ? ':' : 'es:')
+            call fops#utils#print_raw_clear()
             call fops#utils#print(l:found_msg)
             for l:idx in range(l:matches_len)
                 let l:match = l:matches[l:idx]
@@ -372,14 +382,15 @@ function! fops#commands#file_find(input) abort
             " update the current buffer with the selection
             let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:selection)
             if l:buffer_updated
-                if fops#config#get('show_success_prints')
-                    let l:msg = 'Buffer updated to edit file (' .
-                              \ l:selection . ').'
-                    call s:print_success(l:msg)
+                if fops#config#get('show_verbose_prints')
+                    let l:msg = 'Buffer updated to edit file "' .
+                              \ l:selection . '".'
+                    call s:print_verbose(l:msg)
                 endif
             endif
         endif
     catch
+        call s:maybe_show_help_menu(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -395,13 +406,13 @@ endfunction
 
 " Main function for the delete command.
 function! fops#commands#file_delete(input) abort
+    let l:parser = argonaut#argparser#new(s:file_delete_argset)
     try
         call fops#utils#print_debug('Executing the file-delete command.')
 
         " parse command-line arguments
-        let l:parser = argonaut#argparser#new(s:file_delete_argset)
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser, s:file_delete_argset)
+        if s:maybe_show_help_menu(l:parser)
             return
         endif
     
@@ -435,14 +446,12 @@ function! fops#commands#file_delete(input) abort
         let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, v:null)
         
         " show a success message
-        if fops#config#get('show_success_prints')
-            let l:msg = 'Deletion succeeded.'
-            if l:buffer_updated
-                let l:msg .= ' Buffer updated to edit an empty buffer.'
-            endif
-            call s:print_success(l:msg)
+        call fops#utils#print('Deletion successful.')
+        if fops#config#get('show_verbose_prints') && l:buffer_updated
+            call s:print_verbose('Buffer updated to edit an empty buffer.')
         endif
     catch
+        call s:maybe_show_help_menu(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -458,13 +467,13 @@ endfunction
 
 " Main function for the copy command.
 function! fops#commands#file_copy(input) abort
+    let l:parser = argonaut#argparser#new(s:file_copy_argset)
     try
         call fops#utils#print_debug('Executing the file-copy command.')
 
         " parse command-line arguments
-        let l:parser = argonaut#argparser#new(s:file_copy_argset)
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser, s:file_copy_argset)
+        if s:maybe_show_help_menu(l:parser)
             return
         endif
     
@@ -491,14 +500,13 @@ function! fops#commands#file_copy(input) abort
         let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:dst)
         
         " show a success message
-        if fops#config#get('show_success_prints')
-            let l:msg = 'Copy succeeded.'
-            if l:buffer_updated
-                let l:msg .= ' Buffer updated to edit new file (' . l:dst . ').'
-            endif
-            call s:print_success(l:msg)
+        call fops#utils#print('Copy to "' . l:dst . '" successful.')
+        if fops#config#get('show_verbose_prints') &&l:buffer_updated
+            let l:msg .= ' Buffer updated to edit new file "' . l:dst . '".'
+            call s:print_verbose(l:msg)
         endif
     catch
+        call s:maybe_show_help_menu(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -513,13 +521,13 @@ function! fops#commands#file_move_complete(arg, line, pos)
 endfunction
 
 function! fops#commands#file_move(input) abort
+    let l:parser = argonaut#argparser#new(s:file_move_argset)
     try
         call fops#utils#print_debug('Executing the file-move command.')
 
         " parse command-line arguments
-        let l:parser = argonaut#argparser#new(s:file_move_argset)
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser, s:file_move_argset)
+        if s:maybe_show_help_menu(l:parser)
             return
         endif
     
@@ -546,21 +554,41 @@ function! fops#commands#file_move(input) abort
         let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:dst)
         
         " show a success message
-        if fops#config#get('show_success_prints')
-            let l:msg = 'Move succeeded.'
-            if l:buffer_updated
-                let l:msg .= ' Buffer updated to edit relocated file (' . l:dst . ').'
-            endif
-            call s:print_success(l:msg)
+        call fops#utils#print('Move to "' . l:dst . '" successful.')
+        if fops#config#get('show_verbose_prints') && l:buffer_updated
+            let l:msg .= ' Buffer updated to edit relocated file "' . l:dst . '".'
+            call s:print_verbose(l:msg)
         endif
     catch
+        call s:maybe_show_help_menu(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
 
 
 " ============================== Rename Command ============================== "
+" This argument indicates that the user wishes to rename the name, *excluding*
+" the extension.
+let s:arg_rename_name = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_rename_name, argonaut#argid#new('r', 'n'))
+call argonaut#arg#add_argid(s:arg_rename_name, argonaut#argid#new('-', 'rn'))
+call argonaut#arg#add_argid(s:arg_rename_name, argonaut#argid#new('--', 'rename-name'))
+call argonaut#arg#set_description(s:arg_rename_name,
+    \ "Renames the file's name, while keeping its extension as-is."
+\ )
+
+let s:arg_rename_ext = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('r', 'e'))
+call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('-', 're'))
+call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('--', 'rename-ext'))
+call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('--', 'rename-extension'))
+call argonaut#arg#set_description(s:arg_rename_ext,
+    \ "Renames the file's extension, while keeping the name as-is."
+\ )
+
 let s:file_rename_argset = argonaut#argset#new([s:arg_help, s:arg_edit, s:arg_source])
+call argonaut#argset#add_arg(s:file_rename_argset, s:arg_rename_name)
+call argonaut#argset#add_arg(s:file_rename_argset, s:arg_rename_ext)
 
 " Tab completion helper function for the rename command.
 function! fops#commands#file_rename_complete(arg, line, pos)
@@ -568,27 +596,52 @@ function! fops#commands#file_rename_complete(arg, line, pos)
 endfunction
 
 function! fops#commands#file_rename(input) abort
+    let l:parser = argonaut#argparser#new(s:file_rename_argset)
     try
         call fops#utils#print_debug('Executing the file-rename command.')
 
         " parse command-line arguments
-        let l:parser = argonaut#argparser#new(s:file_rename_argset)
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser, s:file_rename_argset)
+        if s:maybe_show_help_menu(l:parser)
             return
         endif
     
-        " get the source files and new name
+        " get the source files and new name input
         let l:src = s:get_src_file(l:parser)
         let l:name = s:get_dst_file(l:parser, v:true, 'No new file name was provided.')
         call s:check_rename_input(l:name)
         call fops#utils#print_debug('Source file: ' . l:src)
-        call fops#utils#print_debug('New name: ' . l:name)
+        call fops#utils#print_debug('Input value: ' . l:name)
 
+        " by default, we'll rename the entire basename. Check the user's input
+        " arguments in case something else was chosen
+        let l:dst = fops#utils#path_set_basename(l:src, l:name)
+        if argonaut#argparser#has_arg(l:parser, '--rename-name')
+            " if only the name is to be changed, we'll keep the extension
+            let l:old_ext = fops#utils#path_get_extension(l:src)
+            let l:dst = fops#utils#path_remove_extension(l:src) . '.' . l:old_ext
+            call fops#utils#print_debug('New file path ' .
+                                      \ '(new name, same extension): "' .
+                                      \ l:dst . '"')
+        elseif argonaut#argparser#has_arg(l:parser, '--rename-extension')
+            " if only the extension is to be changed, keep the original name
+            let l:old_name = fops#utils#path_get_basename(l:src)
+            let l:old_name = fops#utils#path_remove_extension(l:old_name)
+            
+            " modify the input string to ensure it begins with a dot
+            let l:ext = l:name
+            if !fops#utils#str_begins_with(l:name, '.')
+                let l:ext = '.' . l:ext
+            endif
+            
+            let l:dst = fops#utils#path_set_basename(l:src, l:old_name . l:ext)
+            call fops#utils#print_debug('New file path ' .
+                                      \ '(new name, same extension): "' .
+                                      \ l:dst . '"')
+        endif
 
         " if the destination file already exists, confirm with the user that
         " it's OK to overwrite it
-        let l:dst = fops#utils#path_set_basename(l:src, l:name)
         if fops#utils#path_is_file(l:dst) && fops#config#get('prompt_for_overwrite_file')
             let l:msg = 'File "' . l:dst . '" already exists. Overwrite? (y/n) '
             if !fops#utils#input_yesno(l:msg)
@@ -598,88 +651,19 @@ function! fops#commands#file_rename(input) abort
         endif
 
         " attempt to rename the file (i.e. set its basename)
-        let l:dst = fops#utils#file_rename(l:src, l:name)
+        call fops#utils#file_move(l:src, l:dst)
 
         " if the user requested it, update the current buffer to edit the copied file
         let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:dst)
         
         " show a success message
-        if fops#config#get('show_success_prints')
-            let l:msg = 'Rename succeeded.'
-            if l:buffer_updated
-                let l:msg .= ' Buffer updated to edit renamed file (' . l:dst . ').'
-            endif
-            call s:print_success(l:msg)
+        call fops#utils#print('Rename to "' . l:dst . '" successful.')
+        if fops#config#get('show_verbose_prints') &&l:buffer_updated
+            let l:msg .= ' Buffer updated to edit renamed file "' . l:dst . '".'
+            call s:print_verbose(l:msg)
         endif
     catch
-        call fops#utils#print_error(v:exception)
-    endtry
-endfunction
-
-
-" ========================= Rename Extension Command ========================= "
-let s:file_rename_extension_argset = argonaut#argset#new([s:arg_help, s:arg_edit, s:arg_source])
-
-" Tab completion helper function for the rename extension command.
-function! fops#commands#file_rename_extension_complete(arg, line, pos)
-    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_rename_extension_argset)
-endfunction
-
-function! fops#commands#file_rename_extension(input) abort
-    try
-        call fops#utils#print_debug('Executing the file-rename-extension command.')
-
-        " parse command-line arguments
-        let l:parser = argonaut#argparser#new(s:file_rename_argset)
-        call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser, s:file_rename_argset)
-            return
-        endif
-    
-        " get the source files and new extension
-        let l:src = s:get_src_file(l:parser)
-        let l:ext = s:get_dst_file(l:parser, v:true, 'No new file extension was provided.')
-        call s:check_rename_input(l:ext)
-
-        " sanitize the extension value, such that a dot is always at the
-        " beginning of the file
-        if !fops#utils#str_begins_with(l:ext, '.')
-            let l:ext = '.' . l:ext
-        endif
-
-        call fops#utils#print_debug('Source file: ' . l:src)
-        call fops#utils#print_debug('New extension: ' . l:ext)
-
-        " build a full file name, including the new extension
-        let l:name = fops#utils#path_remove_extension(l:src)
-        let l:name = fops#utils#path_get_basename(l:name)
-        let l:name = l:name . l:ext
-
-        " if the destination file already exists, confirm with the user that
-        " it's OK to overwrite it
-        let l:dst = fops#utils#path_set_basename(l:src, l:name)
-        if fops#utils#path_is_file(l:dst) && fops#config#get('prompt_for_overwrite_file')
-            let l:msg = 'File "' . l:dst . '" already exists. Overwrite? (y/n) '
-            if !fops#utils#input_yesno(l:msg)
-                return
-            endif
-            echo ' '
-        endif
-
-        let l:dst = fops#utils#file_rename(l:src, l:name)
-
-        " if the user requested it, update the current buffer to edit the copied file
-        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:dst)
-        
-        " show a success message
-        if fops#config#get('show_success_prints')
-            let l:msg = 'Extension rename succeeded.'
-            if l:buffer_updated
-                let l:msg .= ' Buffer updated to edit renamed file (' . l:dst . ').'
-            endif
-            call s:print_success(l:msg)
-        endif
-    catch
+        call s:maybe_show_help_menu(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -700,42 +684,42 @@ call argonaut#arg#set_value_hint(s:arg_register, 'REGISTER_NAME')
 
 " This argument indicates that the user wishes to yank the full file path.
 let s:arg_yank_path = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_yank_path, argonaut#argid#new('y', 'p'))
 call argonaut#arg#add_argid(s:arg_yank_path, argonaut#argid#new('-', 'yp'))
 call argonaut#arg#add_argid(s:arg_yank_path, argonaut#argid#new('--', 'yank-path'))
-call argonaut#arg#add_argid(s:arg_yank_path, argonaut#argid#new('y', 'p'))
 call argonaut#arg#set_description(s:arg_yank_path,
     \ "Yanks the file's full path."
 \ )
 
 " This argument indicates that the user wishes to yank the file's basename.
 let s:arg_yank_basename = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('y', 'b'))
+call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('y', 'n'))
 call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('-', 'yb'))
 call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('-', 'yn'))
 call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('--', 'yank-name'))
 call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('--', 'yank-base'))
 call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('--', 'yank-basename'))
-call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('y', 'b'))
-call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('y', 'n'))
 call argonaut#arg#set_description(s:arg_yank_basename,
     \ "Yanks the file's basename (the string appearing after the final path delimeter)."
 \ )
 
 " This argument indicates that the user wishes to yank the file's dirname.
 let s:arg_yank_dirname = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('y', 'd'))
 call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('-', 'yd'))
 call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('--', 'yank-dir'))
 call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('--', 'yank-dirname'))
-call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('y', 'd'))
 call argonaut#arg#set_description(s:arg_yank_dirname,
     \ "Yanks the file's dirname (the full string appearing before the final path delimeter)."
 \ )
 
 " This argument indicates that the user wishes to yank the file's extension.
 let s:arg_yank_ext = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('y', 'e'))
 call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('-', 'ye'))
 call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('--', 'yank-ext'))
 call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('--', 'yank-extension'))
-call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('y', 'e'))
 call argonaut#arg#set_description(s:arg_yank_ext,
     \ "Yanks the file's extension."
 \ )
@@ -753,13 +737,13 @@ function! fops#commands#file_yank_complete(arg, line, pos)
 endfunction
 
 function! fops#commands#file_yank(input) abort
+    let l:parser = argonaut#argparser#new(s:file_yank_argset)
     try
         call fops#utils#print_debug('Executing the file-yank command.')
 
         " parse command-line arguments
-        let l:parser = argonaut#argparser#new(s:file_yank_argset)
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser, s:file_yank_argset)
+        if s:maybe_show_help_menu(l:parser)
             return
         endif
         
@@ -794,11 +778,10 @@ function! fops#commands#file_yank(input) abort
         call fops#utils#reg_write(l:reg, l:reg_val)
 
         " show a success message
-        if fops#config#get('show_success_prints')
-            let l:msg = l:success_msg . 'written to register @' . l:reg . '.'
-            call s:print_success(l:msg)
-        endif
+        let l:msg = l:success_msg . 'written to register @' . l:reg . '.'
+        call fops#utils#print(l:msg)
     catch
+        call s:maybe_show_help_menu(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction

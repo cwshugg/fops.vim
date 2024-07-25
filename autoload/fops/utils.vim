@@ -8,6 +8,19 @@ function! fops#utils#print(msg) abort
     echomsg fops#config#get('print_prefix') . a:msg
 endfunction
 
+" Prints a message that is not committed to the message history and is printed
+" as-is, with no newline at the end.
+function! fops#utils#print_raw(msg) abort
+    echon fops#config#get('print_prefix') . a:msg
+    redraw
+endfunction
+
+" Clears the current output line.
+function! fops#utils#print_raw_clear() abort
+    echon "\r\033[K"
+    redraw
+endfunction
+
 " Displays a debug print message.
 function! fops#utils#print_debug(msg) abort
     if fops#config#get('show_debug_prints')
@@ -191,6 +204,11 @@ endfunction
 " path that is preceded by a single dot).
 function! fops#utils#path_get_extension(path) abort
     return fnamemodify(a:path, ':e')
+endfunction
+
+" Returns the absolute path of the given path string.
+function! fops#utils#path_get_absolute(path) abort
+    return fnamemodify(a:path, ':p')
 endfunction
 
 " Returns the entire file path, minus the extension.

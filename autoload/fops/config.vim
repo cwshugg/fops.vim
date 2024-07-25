@@ -4,7 +4,7 @@
 " Internal configuration object. This stores all configuration fields & their
 " values.
 let s:fops_config = {
-    \ 'show_success_prints': v:false,
+    \ 'show_verbose_prints': v:true,
     \ 'show_debug_prints': v:false,
     \ 'print_prefix': '',
     \ 'debug_print_prefix': 'FOPS-Debug: ',
