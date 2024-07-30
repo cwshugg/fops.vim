@@ -31,13 +31,13 @@ command!
     \ FilePath
     \ call fops#commands#file_path(<q-args>)
 
-" File Info - Effectively a wrapper for the Linux `file` command. Displays
-" information on the file and its contents.
+" File Type - Effectively a wrapper for the Linux `file` command. Displays
+" information on the file's contents.
 command!
     \ -nargs=*
-    \ -complete=customlist,fops#commands#file_info_complete
-    \ FileInfo
-    \ call fops#commands#file_info(<q-args>)
+    \ -complete=customlist,fops#commands#file_type_complete
+    \ FileType
+    \ call fops#commands#file_type(<q-args>)
 
 " File Size - Displays the file's size.
 command!
@@ -89,4 +89,11 @@ command!
     \ -complete=customlist,fops#commands#file_yank_complete
     \ FileYank
     \ call fops#commands#file_yank(<q-args>)
+
+" Tree - Displays a tree of files from the source/current directory.
+command!
+    \ -nargs=*
+    \ -complete=customlist,fops#commands#file_tree_complete
+    \ FileTree
+    \ call fops#commands#file_tree(<q-args>)
 

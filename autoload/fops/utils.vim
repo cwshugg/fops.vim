@@ -111,7 +111,7 @@ endfunction
 
 " Reads user input and attempts to convert it to a number.
 function! fops#utils#input_number(msg) abort
-    return str2nr(fops#utils#input_str(msg))
+    return str2nr(fops#utils#input_str(a:msg))
 endfunction
 
 " Reads input from the user and attempts to convert it to an integer. The
@@ -233,6 +233,15 @@ function! fops#utils#path_is_dir(path) abort
     return isdirectory(a:path)
 endfunction
 
+" Returns the combined `path` and `name`, while avoiding double slashes in the
+" string.
+function! fops#utils#path_append(path, name) abort
+    " remove the trailing slash, if it exists
+    let l:result = fnamemodify(a:path, ':p:h')
+    let l:result = l:result . '/' . a:name
+    return l:result
+endfunction
+
 " Retrieves information about the given file.
 function! fops#utils#file_get_info(src_path) abort
     let l:cmd = 'file ' . a:src_path
@@ -327,5 +336,17 @@ function! fops#utils#file_rename(src_path, name) abort
     " invoke the move function
     call fops#utils#file_move(a:src_path, l:dst_path)
     return l:dst_path
+endfunction
+
+" Returns a list of children under the given directory.
+function! fops#utils#dir_get_entries(path) abort
+    let l:files = globpath(a:path, '/*', v:false, v:true)
+    let l:files_len = len(l:files)
+    
+    " remove double slashes from the resulting file paths
+    for l:idx in range(l:files_len)
+        let l:files[l:idx] = substitute(l:files[l:idx], '//', '/', 'g')
+    endfor
+    return l:files
 endfunction
 

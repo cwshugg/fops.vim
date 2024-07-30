@@ -225,19 +225,19 @@ function! fops#commands#file_path(input) abort
 endfunction
 
 
-" ============================ File Info Command ============================= "
-let s:file_info_argset = argonaut#argset#new([s:arg_help, s:arg_source])
+" ============================ File Type Command ============================= "
+let s:file_type_argset = argonaut#argset#new([s:arg_help, s:arg_source])
 
-" Tab completion helper function for the info command.
-function! fops#commands#file_info_complete(arg, line, pos)
-    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_info_argset)
+" Tab completion helper function for the type command.
+function! fops#commands#file_type_complete(arg, line, pos)
+    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_type_argset)
 endfunction
 
-" Main function for the info command.
-function! fops#commands#file_info(input) abort
-    let l:parser = argonaut#argparser#new(s:file_info_argset)
+" Main function for the type command.
+function! fops#commands#file_type(input) abort
+    let l:parser = argonaut#argparser#new(s:file_type_argset)
     try
-        call fops#utils#print_debug('Executing the file-info command.')
+        call fops#utils#print_debug('Executing the file-type command.')
 
         " parse command-line arguments
         call argonaut#argparser#parse(l:parser, a:input)
@@ -780,6 +780,122 @@ function! fops#commands#file_yank(input) abort
         " show a success message
         let l:msg = l:success_msg . 'written to register @' . l:reg . '.'
         call fops#utils#print(l:msg)
+    catch
+        call s:maybe_show_help_menu(l:parser)
+        call fops#utils#print_error(v:exception)
+    endtry
+endfunction
+
+
+" =============================== Tree Command =============================== "
+let s:file_tree_argset = argonaut#argset#new([s:arg_help, s:arg_edit, s:arg_source])
+
+" Tab completion helper function for the tree command.
+function! fops#commands#file_tree_complete(arg, line, pos)
+    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_tree_argset)
+endfunction
+
+" Helper function that recursively iterates through the given root's files.
+function! fops#commands#file_tree_traverse_helper(root, files, idx, prefix) abort
+    let l:entries = fops#utils#dir_get_entries(a:root)
+    
+    let l:i = a:idx
+    let l:entries_len = len(l:entries)
+    for l:entry_idx in range(l:entries_len)
+        let l:entry = l:entries[l:entry_idx]
+
+        " get the file basename and format the index number
+        let l:basename = fops#utils#path_get_basename(l:entry)
+        let l:number = printf('%-10s', (l:i + 1) . '.')
+
+        " decide on a prefix to print a tree-like structure
+        let l:tree_prefix = a:prefix . ' ├─ '
+        if l:entry_idx == l:entries_len - 1
+            let l:tree_prefix = a:prefix . ' └─ '
+        endif
+
+        " build the final line string and print it
+        let l:line = '' . l:number . ' ' . l:tree_prefix . l:basename
+        call fops#utils#print(l:line)
+        
+        " increment the index and append to the list
+        let l:i += 1
+        call add(a:files, l:entry)
+
+        " if the current entry is a directory, recursively call this function
+        if fops#utils#path_is_dir(l:entry)
+            let l:child_prefix = ' │  '
+            if l:entry_idx == l:entries_len - 1
+                let l:child_prefix = '    '
+            endif
+            
+            " invoke the helper on the child
+            let l:result = fops#commands#file_tree_traverse_helper(
+                \ l:entry,
+                \ a:files,
+                \ l:i,
+                \ a:prefix . l:child_prefix
+            \ )
+
+            " update the index based on the result
+            let l:i = l:result[1]
+        endif
+    endfor
+
+    return [a:files, l:i, a:prefix]
+endfunction
+
+" Helper function that displays a tree from the given directory.
+" Returns a list of directories and files.
+function! fops#commands#file_tree_traverse(dir) abort
+    call fops#utils#print('File Tree: "' . a:dir . '"')
+    let l:result = fops#commands#file_tree_traverse_helper(a:dir, [], 0, "")
+    return l:result[0]
+endfunction
+
+function! fops#commands#file_tree(input) abort
+    let l:parser = argonaut#argparser#new(s:file_tree_argset)
+    try
+        call fops#utils#print_debug('Executing the file-tree command.')
+
+        " parse command-line arguments
+        call argonaut#argparser#parse(l:parser, a:input)
+        if s:maybe_show_help_menu(l:parser)
+            return
+        endif
+    
+        " get the source file, and deduce a directory from it (if the source
+        " file *is* a directory, we'll use that. If not, we'll use the source
+        " file's parent directory)
+        let l:src = s:get_src_file(l:parser)
+        if !fops#utils#path_is_dir(l:src)
+            let l:src = fops#utils#path_get_dirname(l:src)
+        endif
+        call fops#utils#print_debug('Source directory: ' . l:src)
+
+        " traverse the directory and print a tree
+        let l:files = fops#commands#file_tree_traverse(l:src)
+
+        " if the user requested it, prompt the user to select a file to edit
+        if argonaut#argparser#has_arg(l:parser, '-e')
+            let l:files_len = len(l:files)
+
+            " build a message and prompt the user
+            let l:msg = 'Which file would you like to edit? ' .
+                      \ '(enter a value from 1 to ' . l:files_len . ') '
+            let l:idx = fops#utils#input_number_values(l:msg, range(1, l:files_len))
+            let l:selection = l:files[l:idx - 1]
+
+            " update the current buffer with the selection
+            let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:selection)
+            if l:buffer_updated
+                if fops#config#get('show_verbose_prints')
+                    let l:msg = 'Buffer updated to edit file "' .
+                              \ l:selection . '".'
+                    call s:print_verbose(l:msg)
+                endif
+            endif
+        endif
     catch
         call s:maybe_show_help_menu(l:parser)
         call fops#utils#print_error(v:exception)
