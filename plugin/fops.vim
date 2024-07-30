@@ -60,7 +60,6 @@ command!
     \ FileDelete
     \ call fops#commands#file_delete(<q-args>)
 
-
 " Copy - Saves a copy of the file in the current buffer.
 command!
     \ -nargs=*
