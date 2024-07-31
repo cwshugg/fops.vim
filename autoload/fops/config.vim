@@ -5,7 +5,7 @@
 " values.
 let s:fops_config = {
     \ 'show_verbose_prints': v:true,
-    \ 'show_debug_prints': v:true,
+    \ 'show_debug_prints': v:false,
     \ 'print_prefix': '',
     \ 'debug_print_prefix': 'FOPS-Debug: ',
     \ 'error_print_prefix': 'FOPS-Error: ',

@@ -392,7 +392,7 @@ function! fops#commands#file_find(input) abort
             endif
             
             " update the current buffer with the selection
-            let l:buffer_updated = s:retarget_current_buffer(l:parser, l:selection)
+            let l:buffer_updated = s:retarget_current_buffer(l:selection)
             if l:buffer_updated
                 if fops#config#get('show_verbose_prints')
                     let l:msg = 'Buffer updated to edit file "' .
@@ -902,7 +902,7 @@ function! fops#commands#file_tree(input) abort
             let l:selection = l:files[l:idx - 1]
 
             " update the current buffer with the selection
-            let l:buffer_updated = s:retarget_current_buffer(l:parser, l:selection)
+            let l:buffer_updated = s:retarget_current_buffer(l:selection)
             if l:buffer_updated
                 if fops#config#get('show_verbose_prints')
                     let l:msg = 'Buffer updated to edit file "' .
