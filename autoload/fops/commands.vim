@@ -23,19 +23,6 @@ call argonaut#arg#set_description(s:arg_edit,
     \ 'Updates the current buffer to edit the relocated/renamed/modified file.'
 \ )
 
-" The `-s`/`--source` argument is used by several of the commands in this
-" plugin. This allows the user to specify the source file to operate on. (By
-" default, the source file is the one pointed at by the user's current
-" buffer.)
-let s:arg_source = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_source, argonaut#argid#new('-', 's'))
-call argonaut#arg#add_argid(s:arg_source, argonaut#argid#new('--', 'source'))
-call argonaut#arg#set_description(s:arg_source,
-    \ 'Sets the source file to operate on. (The default is the file open in your current buffer.)'
-\ )
-call argonaut#arg#set_value_required(s:arg_source, 1)
-call argonaut#arg#set_value_hint(s:arg_source, 'FILE_PATH')
-
 
 " ================================= Helpers ================================== "
 " Prints a verbose message. The print only occurs if verbose messages are
@@ -60,6 +47,19 @@ function! s:maybe_show_help_menu(parser) abort
     return v:true
 endfunction
 
+" Updates the current buffer to modify the file at the given path.
+function! s:retarget_current_buffer(path) abort
+    " make sure the given file path is a valid file or directory
+    if !fops#utils#path_is_file(a:path) && !fops#utils#path_is_dir(a:path)
+        let l:errmsg .= 'The provided path (' . a:path .
+                      \ ') is not a valid file or directory.'
+        call fops#utils#panic(l:errmsg)
+    endif
+
+    " open the new file in the current buffer
+    :silent execute 'edit ' . a:path
+endfunction
+
 " Checks the given parser for the presence of the `--edit` argument. If it's
 " present, the current buffer is updated to edit the given file path.
 "
@@ -76,18 +76,100 @@ function! s:maybe_retarget_current_buffer(parser, path) abort
         execute 'enew'
         return v:true
     endif
+    
+    call s:retarget_current_buffer(a:path)
+    return v:true
+endfunction
 
-    " make sure the given file path is a valid file or directory
-    if !fops#utils#path_is_file(a:path) && !fops#utils#path_is_dir(a:path)
-        let l:errmsg .= 'The provided path (' . a:path .
-                      \ ') is not a valid file or directory.'
+" Helper function that returns target files based on the expected number
+" passed in. Typically this value is 1 or 2, because most of this plugin's
+" commands accept one or two file paths as input.
+"
+" If one less than the expected number of file paths is provided, the first
+" file path used will be the source file pointed at by the current buffer.
+"
+" The `check_list` should be a list of true/false values, indicating which of
+" the arguments should be checked for file/directory existence. Each entry
+" corresponds to the index in the final list of path strings.
+function! s:get_inputs(parser, expected_count, check_list) abort
+    " sanity check: make sure the check list's length matches the expected
+    " number of file input paths
+    call fops#utils#sanity(len(a:check_list) == a:expected_count)
+
+    " retrieve the 'extra'/'unnamed' arguments from the parser
+    let l:args = argonaut#argparser#get_extra_args(a:parser)
+    let l:args_len = len(l:args)
+
+    " if the number of arguments provided is too many, panic
+    if l:args_len > a:expected_count
+        let l:errmsg = 'Too many arguments were provided. '
+        if a:expected_count > 1
+            let l:errmsg .= 'You must provide at least ' . (a:expected_count - 1) . '.'
+        else
+            let l:errmsg .= 'You must provided none, or at most 1.'
+        endif
         call fops#utils#panic(l:errmsg)
     endif
 
-    " open the new file in the current buffer
-    :silent execute 'edit ' . a:path
+    " if the number of arguments provided is too little, panic
+    if l:args_len < a:expected_count - 1
+        let l:errmsg = 'Not enough arguments were provided. '
+        if a:expected_count > 1
+            let l:errmsg .= 'You must provide at least ' . (a:expected_count - 1) . '.'
+        else
+            let l:errmsg .= 'You must provided none, or at most 1.'
+        endif
+        call fops#utils#panic(l:errmsg)
+    endif
 
-    return v:true
+    let l:paths = []
+    let l:check_list_idx = 0
+    let l:paths_remaining = a:expected_count
+
+    " if the number of arguments provided is exactly one less than the
+    " expected number, we'll use the current buffer file path as the first
+    " file path
+    if l:args_len == a:expected_count - 1
+        let l:current = fops#utils#get_current_file()
+        
+        " make sure the file actually exists (if the check list requires this
+        " check to be performed)
+        if get(a:check_list, 0) &&
+         \ !fops#utils#path_is_file(l:current) &&
+         \ !fops#utils#path_is_dir(l:current)
+            let l:errmsg = "The current buffer's file path (" .
+                         \ l:current . ') is not a valid file or directory.'
+            call fops#utils#panic(l:errmsg)
+        endif
+
+        call add(l:paths, l:current)
+        let l:check_list_idx += 1
+        let l:paths_remaining -= 1
+    endif
+
+    " add all arguments to the resulting list, while ensuring they each are
+    " valid files
+    for l:i in range(l:paths_remaining)
+        let l:path = get(l:args, l:i)
+
+        " if required, make sure the current file path exists
+        if get(a:check_list, l:check_list_idx)
+            let l:path = expand(l:path)
+            if !fops#utils#path_is_file(l:path) && !fops#utils#path_is_dir(l:path)
+                let l:errmsg = "The provided file path (" .
+                             \ l:path . ') is not a valid file or directory.'
+                call fops#utils#panic(l:errmsg)
+            endif
+        endif
+
+        call add(l:paths, l:path)
+        let l:check_list_idx += 1
+    endfor
+
+    " by the time we're done, we should have added exactly the number
+    " requested by `expected_count`
+    call fops#utils#sanity(len(l:paths) == a:expected_count)
+    return l:paths
 endfunction
 
 " Helper function that returns one of the following, in this order of
@@ -164,6 +246,7 @@ function! s:get_register(parser) abort
     if len(reg_input) == 0
         return fops#utils#reg_lookup('"')
     endif
+    let l:reg_input = l:reg_input[0]
 
     " lookup the register name with the user's input, and throw an error if an
     " invalid name was given
@@ -195,7 +278,7 @@ endfunction
 
 
 " ============================ File Path Command ============================= "
-let s:file_path_argset = argonaut#argset#new([s:arg_help, s:arg_source])
+let s:file_path_argset = argonaut#argset#new([s:arg_help])
 
 " Tab completion helper function for the path command.
 function! fops#commands#file_path_complete(arg, line, pos)
@@ -215,7 +298,7 @@ function! fops#commands#file_path(input) abort
         endif
     
         " get the source file and display the path
-        let l:src = s:get_src_file(l:parser)
+        let l:src = s:get_inputs(l:parser, 1, [1])[0]
         call fops#utils#print_debug('Source file: ' . l:src)
         call fops#utils#print(expand(l:src))
     catch
@@ -226,7 +309,7 @@ endfunction
 
 
 " ============================ File Type Command ============================= "
-let s:file_type_argset = argonaut#argset#new([s:arg_help, s:arg_source])
+let s:file_type_argset = argonaut#argset#new([s:arg_help])
 
 " Tab completion helper function for the type command.
 function! fops#commands#file_type_complete(arg, line, pos)
@@ -246,7 +329,7 @@ function! fops#commands#file_type(input) abort
         endif
     
         " get the source file to examine
-        let l:src = s:get_src_file(l:parser)
+        let l:src = s:get_inputs(l:parser, 1, [1])[0]
         call fops#utils#print_debug('Source file: ' . l:src)
 
         " retrieve file information and display it
@@ -260,7 +343,7 @@ endfunction
 
 
 " ============================ File Size Command ============================= "
-let s:file_size_argset = argonaut#argset#new([s:arg_help, s:arg_source])
+let s:file_size_argset = argonaut#argset#new([s:arg_help])
 
 " Tab completion helper function for the size command.
 function! fops#commands#file_size_complete(arg, line, pos)
@@ -280,7 +363,7 @@ function! fops#commands#file_size(input) abort
         endif
     
         " get the source file to examine
-        let l:src = s:get_src_file(l:parser)
+        let l:src = s:get_inputs(l:parser, 1, [1])[0]
         call fops#utils#print_debug('Source file: ' . l:src)
 
         " retrieve file size and display it
@@ -297,7 +380,7 @@ endfunction
 
 
 " ============================ File Find Command ============================= "
-let s:file_find_argset = argonaut#argset#new([s:arg_help, s:arg_edit, s:arg_source])
+let s:file_find_argset = argonaut#argset#new([s:arg_help, s:arg_edit])
 
 " Tab completion helper function for the find command.
 function! fops#commands#file_find_complete(arg, line, pos)
@@ -315,22 +398,18 @@ function! fops#commands#file_find(input) abort
         if s:maybe_show_help_menu(l:parser)
             return
         endif
+        
+        " retrieve two inputs; the source file to search from, and the search
+        " query to search for
+        let l:inputs = s:get_inputs(l:parser, 2, [1, 0])
+        let l:src = l:inputs[0]
+        let l:query = l:inputs[1]
 
-        " retrieve the source file/directory; we'll interpret this as the
-        " directory to search from. If this fails, use the current directory
-        let l:src = v:null
-        try
-            let l:src = s:get_src_file(l:parser)
-            if fops#utils#path_is_file(l:src)
-                let l:src = fops#utils#path_get_dirname(l:src)
-            endif
-        catch
-            let l:src = fops#utils#get_pwd()
-        endtry
-    
-        " retrieve the first extra argument; we'll interpret this as the name
-        " to search for
-        let l:query = s:get_dst_file(l:parser, v:false, 'No search query was provided.')
+        " if the source file is a file (and not a directory), grab its parent
+        " directory to search from
+        if fops#utils#path_is_file(l:src)
+            let l:src = fops#utils#path_get_dirname(l:src)
+        endif
 
         call fops#utils#print_debug('Search directory: ' . l:src)
         call fops#utils#print_debug('Search query: ' . l:query)
@@ -380,7 +459,7 @@ function! fops#commands#file_find(input) abort
             endif
             
             " update the current buffer with the selection
-            let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:selection)
+            let l:buffer_updated = s:retarget_current_buffer(l:parser, l:selection)
             if l:buffer_updated
                 if fops#config#get('show_verbose_prints')
                     let l:msg = 'Buffer updated to edit file "' .
@@ -397,7 +476,7 @@ endfunction
 
 
 " ============================== Delete Command ============================== "
-let s:file_delete_argset = argonaut#argset#new([s:arg_help, s:arg_edit, s:arg_source])
+let s:file_delete_argset = argonaut#argset#new([s:arg_help, s:arg_edit])
 
 " Tab completion helper function for the delete command.
 function! fops#commands#file_delete_complete(arg, line, pos)
@@ -417,7 +496,7 @@ function! fops#commands#file_delete(input) abort
         endif
     
         " get the target file
-        let l:file = s:get_src_file(l:parser)
+        let l:file = s:get_inputs(l:parser, 1, [1])[0]
         call fops#utils#print_debug('File to delete: ' . l:file)
 
         " confirm with the user that they want to go through with the
@@ -458,7 +537,7 @@ endfunction
 
 
 " =============================== Copy Command =============================== "
-let s:file_copy_argset = argonaut#argset#new([s:arg_help, s:arg_edit, s:arg_source])
+let s:file_copy_argset = argonaut#argset#new([s:arg_help, s:arg_edit])
 
 " Tab completion helper function for the copy command.
 function! fops#commands#file_copy_complete(arg, line, pos)
@@ -478,8 +557,9 @@ function! fops#commands#file_copy(input) abort
         endif
     
         " get the source and destination files to operate on
-        let l:src = s:get_src_file(l:parser)
-        let l:dst = s:get_dst_file(l:parser)
+        let l:files = s:get_inputs(l:parser, 2, [1, 0])
+        let l:src = l:files[0]
+        let l:dst = expand(l:files[1])
         call fops#utils#print_debug('Source file: ' . l:src)
         call fops#utils#print_debug('Destination file: ' . l:dst)
 
@@ -500,9 +580,9 @@ function! fops#commands#file_copy(input) abort
         let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:dst)
         
         " show a success message
-        call fops#utils#print('Copy to "' . l:dst . '" successful.')
+        call fops#utils#print('Copy from "' . l:src . '" to "' . l:dst . '" successful.')
         if fops#config#get('show_verbose_prints') &&l:buffer_updated
-            let l:msg .= ' Buffer updated to edit new file "' . l:dst . '".'
+            let l:msg = 'Buffer updated to edit new file "' . l:dst . '".'
             call s:print_verbose(l:msg)
         endif
     catch
@@ -513,7 +593,7 @@ endfunction
 
 
 " =============================== Move Command =============================== "
-let s:file_move_argset = argonaut#argset#new([s:arg_help, s:arg_edit, s:arg_source])
+let s:file_move_argset = argonaut#argset#new([s:arg_help, s:arg_edit])
 
 " Tab completion helper function for the move command.
 function! fops#commands#file_move_complete(arg, line, pos)
@@ -532,8 +612,9 @@ function! fops#commands#file_move(input) abort
         endif
     
         " get the source and destination files to operate on
-        let l:src = s:get_src_file(l:parser)
-        let l:dst = s:get_dst_file(l:parser)
+        let l:files = s:get_inputs(l:parser, 2, [1, 0])
+        let l:src = l:files[0]
+        let l:dst = expand(l:files[1])
         call fops#utils#print_debug('Source file: ' . l:src)
         call fops#utils#print_debug('Destination file: ' . l:dst)
 
@@ -554,9 +635,9 @@ function! fops#commands#file_move(input) abort
         let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:dst)
         
         " show a success message
-        call fops#utils#print('Move to "' . l:dst . '" successful.')
+        call fops#utils#print('Move from "' . l:src . '" to "' . l:dst . '" successful.')
         if fops#config#get('show_verbose_prints') && l:buffer_updated
-            let l:msg .= ' Buffer updated to edit relocated file "' . l:dst . '".'
+            let l:msg = 'Buffer updated to edit relocated file "' . l:dst . '".'
             call s:print_verbose(l:msg)
         endif
     catch
@@ -586,7 +667,7 @@ call argonaut#arg#set_description(s:arg_rename_ext,
     \ "Renames the file's extension, while keeping the name as-is."
 \ )
 
-let s:file_rename_argset = argonaut#argset#new([s:arg_help, s:arg_edit, s:arg_source])
+let s:file_rename_argset = argonaut#argset#new([s:arg_help, s:arg_edit])
 call argonaut#argset#add_arg(s:file_rename_argset, s:arg_rename_name)
 call argonaut#argset#add_arg(s:file_rename_argset, s:arg_rename_ext)
 
@@ -607,8 +688,9 @@ function! fops#commands#file_rename(input) abort
         endif
     
         " get the source files and new name input
-        let l:src = s:get_src_file(l:parser)
-        let l:name = s:get_dst_file(l:parser, v:true, 'No new file name was provided.')
+        let l:files = s:get_inputs(l:parser, 2, [1, 0])
+        let l:src = l:files[0]
+        let l:name = l:files[1]
         call s:check_rename_input(l:name)
         call fops#utils#print_debug('Source file: ' . l:src)
         call fops#utils#print_debug('Input value: ' . l:name)
@@ -659,7 +741,7 @@ function! fops#commands#file_rename(input) abort
         " show a success message
         call fops#utils#print('Rename to "' . l:dst . '" successful.')
         if fops#config#get('show_verbose_prints') &&l:buffer_updated
-            let l:msg .= ' Buffer updated to edit renamed file "' . l:dst . '".'
+            let l:msg = 'Buffer updated to edit renamed file "' . l:dst . '".'
             call s:print_verbose(l:msg)
         endif
     catch
@@ -725,7 +807,7 @@ call argonaut#arg#set_description(s:arg_yank_ext,
 \ )
 
 
-let s:file_yank_argset = argonaut#argset#new([s:arg_help, s:arg_source, s:arg_register])
+let s:file_yank_argset = argonaut#argset#new([s:arg_help, s:arg_register])
 call argonaut#argset#add_arg(s:file_yank_argset, s:arg_yank_path)
 call argonaut#argset#add_arg(s:file_yank_argset, s:arg_yank_basename)
 call argonaut#argset#add_arg(s:file_yank_argset, s:arg_yank_dirname)
@@ -748,7 +830,7 @@ function! fops#commands#file_yank(input) abort
         endif
         
         " retrieve the source file and the register the user wants to write to
-        let l:path = s:get_src_file(l:parser)
+        let l:path = s:get_inputs(l:parser, 1, [1])[0]
         let l:reg = s:get_register(l:parser)
         call fops#utils#print_debug('Source file: ' . l:path)
         call fops#utils#print_debug('Target register: ' . l:reg)
@@ -788,7 +870,7 @@ endfunction
 
 
 " =============================== Tree Command =============================== "
-let s:file_tree_argset = argonaut#argset#new([s:arg_help, s:arg_edit, s:arg_source])
+let s:file_tree_argset = argonaut#argset#new([s:arg_help, s:arg_edit])
 
 " Tab completion helper function for the tree command.
 function! fops#commands#file_tree_complete(arg, line, pos)
@@ -867,7 +949,7 @@ function! fops#commands#file_tree(input) abort
         " get the source file, and deduce a directory from it (if the source
         " file *is* a directory, we'll use that. If not, we'll use the source
         " file's parent directory)
-        let l:src = s:get_src_file(l:parser)
+        let l:src = s:get_inputs(l:parser, 1, [1])[0]
         if !fops#utils#path_is_dir(l:src)
             let l:src = fops#utils#path_get_dirname(l:src)
         endif
@@ -887,7 +969,7 @@ function! fops#commands#file_tree(input) abort
             let l:selection = l:files[l:idx - 1]
 
             " update the current buffer with the selection
-            let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:selection)
+            let l:buffer_updated = s:retarget_current_buffer(l:parser, l:selection)
             if l:buffer_updated
                 if fops#config#get('show_verbose_prints')
                     let l:msg = 'Buffer updated to edit file "' .

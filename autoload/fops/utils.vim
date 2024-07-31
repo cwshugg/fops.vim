@@ -42,6 +42,20 @@ function! fops#utils#panic(msg) abort
     throw fops#config#get('error_print_prefix') . a:msg
 endfunction
 
+" Used to perform a sanity check. If the given condition is not true, an error
+" is thrown (with the optional error message).
+function! fops#utils#sanity(condition, ...) abort
+    if !a:condition
+        let l:errmsg = 'Sanity check failed.'
+        if a:0 > 1
+            let l:errmsg = a:1
+        endif
+        
+        " throw an exception
+        throw fops#config#get('sanity_print_prefix') . l:errmsg
+    endif
+endfunction
+
 
 " =========================== Shell/System Helpers =========================== "
 function! fops#utils#run_shell_command(cmd) abort

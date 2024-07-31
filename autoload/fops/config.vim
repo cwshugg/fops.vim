@@ -5,10 +5,11 @@
 " values.
 let s:fops_config = {
     \ 'show_verbose_prints': v:true,
-    \ 'show_debug_prints': v:false,
+    \ 'show_debug_prints': v:true,
     \ 'print_prefix': '',
     \ 'debug_print_prefix': 'FOPS-Debug: ',
     \ 'error_print_prefix': 'FOPS-Error: ',
+    \ 'sanity_print_prefix': 'FOPS-Sanity-Check: ',
     \ 'prompt_for_overwrite_file': v:true,
     \ 'prompt_for_delete_file': v:true,
     \ 'prompt_for_delete_dir': v:true,
