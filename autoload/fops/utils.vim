@@ -258,7 +258,7 @@ endfunction
 
 " Retrieves information about the given file.
 function! fops#utils#file_get_info(src_path) abort
-    let l:cmd = 'file ' . a:src_path
+    let l:cmd = 'file --brief ' . a:src_path
     return trim(fops#utils#run_shell_command(l:cmd))
 endfunction
 

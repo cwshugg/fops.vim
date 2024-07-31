@@ -24,6 +24,15 @@ function! s:fops_create_command_alias(source, alias)
          \ .'? ("'.a:source.'") : ("'.a:alias.'"))'
 endfunction
 
+" File - A general-purpose command that spits out lots of information about a
+" file.
+command!
+    \ -nargs=*
+    \ -complete=customlist,fops#commands#file_complete
+    \ File
+    \ call fops#commands#file(<q-args>)
+
+
 " File Path - Echoes out the current file's path.
 command!
     \ -nargs=*

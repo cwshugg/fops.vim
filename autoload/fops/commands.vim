@@ -210,6 +210,50 @@ function! s:check_rename_input(str) abort
 endfunction
 
 
+" =============================== File Command =============================== "
+let s:file_argset = argonaut#argset#new([s:arg_help])
+
+" Tab completion helper function for the path command.
+function! fops#commands#file_complete(arg, line, pos)
+    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_argset)
+endfunction
+
+" Main function for the path command.
+function! fops#commands#file(input) abort
+    let l:parser = argonaut#argparser#new(s:file_argset)
+    try
+        call fops#utils#print_debug('Executing the file command.')
+
+        " parse command-line arguments
+        call argonaut#argparser#parse(l:parser, a:input)
+        if s:maybe_show_help_menu(l:parser)
+            return
+        endif
+    
+        " get the source file
+        let l:src = s:get_inputs(l:parser, 1, [1])[0]
+        call fops#utils#print_debug('Source file: ' . l:src)
+
+        " display the file's path
+        let l:msg = 'File:       ' . l:src
+        call fops#utils#print(l:msg)
+        
+        " display the file's size
+        let l:size = fops#utils#file_get_size(l:src)
+        let l:size_str = fops#utils#format_file_size(l:size)
+        let l:msg = 'Size:       ' . l:size . ' bytes (' . l:size_str . ')'
+        call fops#utils#print(l:msg)
+
+        " display information about the the file's contents
+        let l:type = fops#utils#file_get_info(l:src)
+        let l:msg = 'Content:    ' . l:type
+        call fops#utils#print(l:msg)
+    catch
+        call s:maybe_show_help_menu(l:parser)
+        call fops#utils#print_error(v:exception)
+    endtry
+endfunction
+
 " ============================ File Path Command ============================= "
 let s:file_path_argset = argonaut#argset#new([s:arg_help])
 
