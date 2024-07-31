@@ -154,7 +154,7 @@ register is used, but any register can be written to by specifying the
 
 " To yank into register `@a`:
 :FileYank -r a
-:FileYank /path/to/file.txt --register a
+:FileYank /path/to/file.txt -r a
 
 " Want to yank only the basename?
 :FileYank -yb

@@ -33,18 +33,9 @@ function! s:print_verbose(msg) abort
     endif
 endfunction
 
-" Helper function that takes in an argparser object and shows the help menu if
-" the `--help` argument (defined above) is specified. Returns true if the help
-" menu was shown.
-function! s:maybe_show_help_menu(parser) abort
-    " if `--help` was not provided, quit early
-    if !argonaut#argparser#has_arg(a:parser, '-h')
-        return v:false
-    endif
-    
-    " show the argonaut built-in help menu
-    call argonaut#argparser#show_help(a:parser)
-    return v:true
+" Returns true if the help-menu argument was specified.
+function! s:should_show_help(parser) abort
+    return argonaut#argparser#has_arg(a:parser, '-h')
 endfunction
 
 " Updates the current buffer to modify the file at the given path.
@@ -218,6 +209,17 @@ function! fops#commands#file_complete(arg, line, pos)
     return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_argset)
 endfunction
 
+" Help menu function.
+function! fops#commands#file_maybe_show_help(parser) abort
+    if s:should_show_help(a:parser)
+        call fops#utils#print('File: Displays general information about a file')
+        call fops#utils#print('Usage: File [/path/to/file]')
+        call argonaut#argparser#show_help(a:parser)
+        return v:true
+    endif
+    return v:false
+endfunction
+
 " Main function for the path command.
 function! fops#commands#file(input) abort
     let l:parser = argonaut#argparser#new(s:file_argset)
@@ -226,7 +228,7 @@ function! fops#commands#file(input) abort
 
         " parse command-line arguments
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser)
+        if fops#commands#file_maybe_show_help(l:parser)
             return
         endif
     
@@ -249,7 +251,7 @@ function! fops#commands#file(input) abort
         let l:msg = 'Content:    ' . l:type
         call fops#utils#print(l:msg)
     catch
-        call s:maybe_show_help_menu(l:parser)
+        call fops#commands#file_maybe_show_help(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -262,6 +264,17 @@ function! fops#commands#file_path_complete(arg, line, pos)
     return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_path_argset)
 endfunction
 
+" Help menu function.
+function! fops#commands#file_path_maybe_show_help(parser) abort
+    if s:should_show_help(a:parser)
+        call fops#utils#print("FilePath: Displays a file's full path.")
+        call fops#utils#print('Usage: FilePath [/path/to/file]')
+        call argonaut#argparser#show_help(a:parser)
+        return v:true
+    endif
+    return v:false
+endfunction
+
 " Main function for the path command.
 function! fops#commands#file_path(input) abort
     let l:parser = argonaut#argparser#new(s:file_path_argset)
@@ -270,7 +283,7 @@ function! fops#commands#file_path(input) abort
 
         " parse command-line arguments
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser)
+        if fops#commands#file_path_maybe_show_help(l:parser)
             return
         endif
     
@@ -279,7 +292,7 @@ function! fops#commands#file_path(input) abort
         call fops#utils#print_debug('Source file: ' . l:src)
         call fops#utils#print(expand(l:src))
     catch
-        call s:maybe_show_help_menu(l:parser)
+        call fops#commands#file_path_maybe_show_help(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -293,6 +306,17 @@ function! fops#commands#file_type_complete(arg, line, pos)
     return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_type_argset)
 endfunction
 
+" Help menu function.
+function! fops#commands#file_type_maybe_show_help(parser) abort
+    if s:should_show_help(a:parser)
+        call fops#utils#print("FileType: Displays the type of contents in a file.")
+        call fops#utils#print('Usage: FileType [/path/to/file]')
+        call argonaut#argparser#show_help(a:parser)
+        return v:true
+    endif
+    return v:false
+endfunction
+
 " Main function for the type command.
 function! fops#commands#file_type(input) abort
     let l:parser = argonaut#argparser#new(s:file_type_argset)
@@ -301,7 +325,7 @@ function! fops#commands#file_type(input) abort
 
         " parse command-line arguments
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser)
+        if fops#commands#file_type_maybe_show_help(l:parser)
             return
         endif
     
@@ -313,7 +337,7 @@ function! fops#commands#file_type(input) abort
         let l:info = fops#utils#file_get_info(l:src)
         call fops#utils#print(l:info)
     catch
-        call s:maybe_show_help_menu(l:parser)
+        call fops#commands#file_type_maybe_show_help(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -327,6 +351,17 @@ function! fops#commands#file_size_complete(arg, line, pos)
     return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_size_argset)
 endfunction
 
+" Help menu function.
+function! fops#commands#file_size_maybe_show_help(parser) abort
+    if s:should_show_help(a:parser)
+        call fops#utils#print("FileSize: Displays the number of bytes stored in a file.")
+        call fops#utils#print('Usage: FileSize [/path/to/file]')
+        call argonaut#argparser#show_help(a:parser)
+        return v:true
+    endif
+    return v:false
+endfunction
+
 " Main function for the size command.
 function! fops#commands#file_size(input) abort
     let l:parser = argonaut#argparser#new(s:file_size_argset)
@@ -335,7 +370,7 @@ function! fops#commands#file_size(input) abort
 
         " parse command-line arguments
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser)
+        if fops#commands#file_size_maybe_show_help(l:parser)
             return
         endif
     
@@ -350,7 +385,7 @@ function! fops#commands#file_size(input) abort
                   \ l:size_str . ')'
         call fops#utils#print(l:msg)
     catch
-        call s:maybe_show_help_menu(l:parser)
+        call fops#commands#file_size_maybe_show_help(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -364,6 +399,17 @@ function! fops#commands#file_find_complete(arg, line, pos)
     return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_find_argset)
 endfunction
 
+" Help menu function.
+function! fops#commands#file_find_maybe_show_help(parser) abort
+    if s:should_show_help(a:parser)
+        call fops#utils#print("FileFind: Search for files with on glob-strings.")
+        call fops#utils#print('Usage: FileFind [/path/to/file] SEARCH_QUERY_GLOB_STRING')
+        call argonaut#argparser#show_help(a:parser)
+        return v:true
+    endif
+    return v:false
+endfunction
+
 " Main function for the find command.
 function! fops#commands#file_find(input) abort
     let l:parser = argonaut#argparser#new(s:file_find_argset)
@@ -372,7 +418,7 @@ function! fops#commands#file_find(input) abort
 
         " parse command-line arguments
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser)
+        if fops#commands#file_find_maybe_show_help(l:parser)
             return
         endif
         
@@ -446,7 +492,7 @@ function! fops#commands#file_find(input) abort
             endif
         endif
     catch
-        call s:maybe_show_help_menu(l:parser)
+        call fops#commands#file_find_maybe_show_help(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -460,6 +506,17 @@ function! fops#commands#file_delete_complete(arg, line, pos)
     return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_delete_argset)
 endfunction
 
+" Help menu function.
+function! fops#commands#file_delete_maybe_show_help(parser) abort
+    if s:should_show_help(a:parser)
+        call fops#utils#print("FileDelete: Delete a file.")
+        call fops#utils#print('Usage: FileDelete [/path/to/file]')
+        call argonaut#argparser#show_help(a:parser)
+        return v:true
+    endif
+    return v:false
+endfunction
+
 " Main function for the delete command.
 function! fops#commands#file_delete(input) abort
     let l:parser = argonaut#argparser#new(s:file_delete_argset)
@@ -468,7 +525,7 @@ function! fops#commands#file_delete(input) abort
 
         " parse command-line arguments
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser)
+        if fops#commands#file_delete_maybe_show_help(l:parser)
             return
         endif
     
@@ -507,7 +564,7 @@ function! fops#commands#file_delete(input) abort
             call s:print_verbose('Buffer updated to edit an empty buffer.')
         endif
     catch
-        call s:maybe_show_help_menu(l:parser)
+        call fops#commands#file_delete_maybe_show_help(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -521,6 +578,17 @@ function! fops#commands#file_copy_complete(arg, line, pos)
     return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_copy_argset)
 endfunction
 
+" Help menu function.
+function! fops#commands#file_copy_maybe_show_help(parser) abort
+    if s:should_show_help(a:parser)
+        call fops#utils#print("FileCopy: Copy a file to a new location.")
+        call fops#utils#print('Usage: FileCopy [/path/to/source] /path/to/destination')
+        call argonaut#argparser#show_help(a:parser)
+        return v:true
+    endif
+    return v:false
+endfunction
+
 " Main function for the copy command.
 function! fops#commands#file_copy(input) abort
     let l:parser = argonaut#argparser#new(s:file_copy_argset)
@@ -529,7 +597,7 @@ function! fops#commands#file_copy(input) abort
 
         " parse command-line arguments
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser)
+        if fops#commands#file_copy_maybe_show_help(l:parser)
             return
         endif
     
@@ -563,7 +631,7 @@ function! fops#commands#file_copy(input) abort
             call s:print_verbose(l:msg)
         endif
     catch
-        call s:maybe_show_help_menu(l:parser)
+        call fops#commands#file_copy_maybe_show_help(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -577,6 +645,17 @@ function! fops#commands#file_move_complete(arg, line, pos)
     return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_move_argset)
 endfunction
 
+" Help menu function.
+function! fops#commands#file_move_maybe_show_help(parser) abort
+    if s:should_show_help(a:parser)
+        call fops#utils#print("FileMove: Move a file to a new location.")
+        call fops#utils#print('Usage: FileMove [/path/to/source] /path/to/destination')
+        call argonaut#argparser#show_help(a:parser)
+        return v:true
+    endif
+    return v:false
+endfunction
+
 function! fops#commands#file_move(input) abort
     let l:parser = argonaut#argparser#new(s:file_move_argset)
     try
@@ -584,7 +663,7 @@ function! fops#commands#file_move(input) abort
 
         " parse command-line arguments
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser)
+        if fops#commands#file_move_maybe_show_help(l:parser)
             return
         endif
     
@@ -618,7 +697,7 @@ function! fops#commands#file_move(input) abort
             call s:print_verbose(l:msg)
         endif
     catch
-        call s:maybe_show_help_menu(l:parser)
+        call fops#commands#file_move_maybe_show_help(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -653,6 +732,17 @@ function! fops#commands#file_rename_complete(arg, line, pos)
     return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_rename_argset)
 endfunction
 
+" Help menu function.
+function! fops#commands#file_rename_maybe_show_help(parser) abort
+    if s:should_show_help(a:parser)
+        call fops#utils#print("FileRename: Modify a file's name without relocating it.")
+        call fops#utils#print('Usage: FileRename [/path/to/source] NEW_NAME')
+        call argonaut#argparser#show_help(a:parser)
+        return v:true
+    endif
+    return v:false
+endfunction
+
 function! fops#commands#file_rename(input) abort
     let l:parser = argonaut#argparser#new(s:file_rename_argset)
     try
@@ -660,7 +750,7 @@ function! fops#commands#file_rename(input) abort
 
         " parse command-line arguments
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser)
+        if fops#commands#file_rename_maybe_show_help(l:parser)
             return
         endif
     
@@ -722,7 +812,7 @@ function! fops#commands#file_rename(input) abort
             call s:print_verbose(l:msg)
         endif
     catch
-        call s:maybe_show_help_menu(l:parser)
+        call fops#commands#file_rename_maybe_show_help(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -795,6 +885,17 @@ function! fops#commands#file_yank_complete(arg, line, pos)
     return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_yank_argset)
 endfunction
 
+" Help menu function.
+function! fops#commands#file_yank_maybe_show_help(parser) abort
+    if s:should_show_help(a:parser)
+        call fops#utils#print("FileYank: Copy file path information into a register.")
+        call fops#utils#print('Usage: FileYank [/path/to/source]')
+        call argonaut#argparser#show_help(a:parser)
+        return v:true
+    endif
+    return v:false
+endfunction
+
 function! fops#commands#file_yank(input) abort
     let l:parser = argonaut#argparser#new(s:file_yank_argset)
     try
@@ -802,7 +903,7 @@ function! fops#commands#file_yank(input) abort
 
         " parse command-line arguments
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser)
+        if fops#commands#file_yank_maybe_show_help(l:parser)
             return
         endif
         
@@ -840,7 +941,7 @@ function! fops#commands#file_yank(input) abort
         let l:msg = l:success_msg . 'written to register @' . l:reg . '.'
         call fops#utils#print(l:msg)
     catch
-        call s:maybe_show_help_menu(l:parser)
+        call fops#commands#file_yank_maybe_show_help(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -912,6 +1013,17 @@ function! fops#commands#file_tree_traverse(dir) abort
     return l:result[0]
 endfunction
 
+" Help menu function.
+function! fops#commands#file_tree_maybe_show_help(parser) abort
+    if s:should_show_help(a:parser)
+        call fops#utils#print("FileTree: Display a tree of files underneath a directory.")
+        call fops#utils#print('Usage: FileTree [/path/to/source]')
+        call argonaut#argparser#show_help(a:parser)
+        return v:true
+    endif
+    return v:false
+endfunction
+
 function! fops#commands#file_tree(input) abort
     let l:parser = argonaut#argparser#new(s:file_tree_argset)
     try
@@ -919,7 +1031,7 @@ function! fops#commands#file_tree(input) abort
 
         " parse command-line arguments
         call argonaut#argparser#parse(l:parser, a:input)
-        if s:maybe_show_help_menu(l:parser)
+        if fops#commands#file_tree_maybe_show_help(l:parser)
             return
         endif
     
@@ -956,7 +1068,7 @@ function! fops#commands#file_tree(input) abort
             endif
         endif
     catch
-        call s:maybe_show_help_menu(l:parser)
+        call fops#commands#file_tree_maybe_show_help(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
