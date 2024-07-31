@@ -43,7 +43,9 @@ $ git clone https://github.com/cwshugg/fops.vim ~/.vim/bundle/fops.vim
 
 ## Commands
 
-The following commands are provided by this plugin:
+The following commands are provided by this plugin. (For each command you can
+always run with `-h` or `--help` to see a menu of all possible command-line
+options!)
 
 ### `File`
 
