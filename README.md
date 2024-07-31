@@ -45,6 +45,16 @@ $ git clone https://github.com/cwshugg/fops.vim ~/.vim/bundle/fops.vim
 
 The following commands are provided by this plugin:
 
+### `File`
+
+Displays general information about your buffer's current file, or the full path
+of *any* file you specify:
+
+```vim
+:File
+:File ~/.bashrc
+```
+
 ### `FilePath`
 
 Displays the full path of your buffer's current file, or the full path of *any*
