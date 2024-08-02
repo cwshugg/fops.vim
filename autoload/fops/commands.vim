@@ -833,7 +833,6 @@ call argonaut#arg#set_value_hint(s:arg_register, 'REGISTER_NAME')
 
 " This argument indicates that the user wishes to yank the full file path.
 let s:arg_yank_path = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_yank_path, argonaut#argid#new('y', 'p'))
 call argonaut#arg#add_argid(s:arg_yank_path, argonaut#argid#new('-', 'yp'))
 call argonaut#arg#add_argid(s:arg_yank_path, argonaut#argid#new('--', 'yank-path'))
 call argonaut#arg#set_description(s:arg_yank_path,
@@ -842,8 +841,6 @@ call argonaut#arg#set_description(s:arg_yank_path,
 
 " This argument indicates that the user wishes to yank the file's basename.
 let s:arg_yank_basename = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('y', 'b'))
-call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('y', 'n'))
 call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('-', 'yb'))
 call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('-', 'yn'))
 call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('--', 'yank-name'))
@@ -855,7 +852,6 @@ call argonaut#arg#set_description(s:arg_yank_basename,
 
 " This argument indicates that the user wishes to yank the file's dirname.
 let s:arg_yank_dirname = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('y', 'd'))
 call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('-', 'yd'))
 call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('--', 'yank-dir'))
 call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('--', 'yank-dirname'))
@@ -865,7 +861,6 @@ call argonaut#arg#set_description(s:arg_yank_dirname,
 
 " This argument indicates that the user wishes to yank the file's extension.
 let s:arg_yank_ext = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('y', 'e'))
 call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('-', 'ye'))
 call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('--', 'yank-ext'))
 call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('--', 'yank-extension'))
