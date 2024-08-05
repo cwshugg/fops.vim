@@ -11,19 +11,6 @@ if exists('g:fops_initialized')
 endif
 let g:fops_initialized = 1
 
-" Creates a safe command alias for commands that begin with ':'.
-"
-" * 'alias' represents the string that will become the new alias.
-" * 'source' represents the existing command you wish to create an alias for.
-"
-" Credit to this StackOverflow post:
-" https://stackoverflow.com/questions/3878692/how-to-create-an-alias-for-a-command-in-vim
-function! s:fops_create_command_alias(source, alias)
-      exec 'cnoreabbrev <expr> '.a:alias
-         \ .' ((getcmdtype() is# ":" && getcmdline() is# "'.a:alias.'")'
-         \ .'? ("'.a:source.'") : ("'.a:alias.'"))'
-endfunction
-
 " File - A general-purpose command that spits out lots of information about a
 " file.
 command!
