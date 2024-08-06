@@ -15,7 +15,7 @@ TODO - GIF!
 
 ## Installation
 
-FOPS is depending on [argonaut.vim](https://github.com/cwshugg/argonaut.vim),
+FOPS depends on [argonaut.vim](https://github.com/cwshugg/argonaut.vim),
 my Vim argument parsing plugin, to provide some handy knobs and switches for
 this plugin's various commands. Install both of them with your favorite plugin
 manager:

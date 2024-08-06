@@ -1,0 +1,231 @@
+*fops* *fops.txt* *FOPS*
+
+      __                 
+     / _| ___  _ __  ___ 
+    | |_ / _ \| '_ \/ __|
+    |  _| (_) | |_) \__ \
+    |_|  \___/| .__/|___/
+              |_|        
+
+    By Connor Shugg <connor@shugg.dev>~
+
+>
+    If you find this plugin useful, I would greatly appreciate a star on
+    GitHub. Stars help me understand how much attention this plugin is getting
+    in the Vim community, and by extension how much time I should devote to
+    improving it.
+
+    If you find any bugs in the plugin, or want to suggest (or even contribute
+    to) a new feature, please feel free to open an issue on GitHub. Thanks!
+<
+
+
+================================================================================
+CONTENTS                                                           *fops-contents*
+
+    INTRODUCTION .............................................. |fops-intro|
+    COMMANDS ............................................... |fops-commands|
+    CONFIGURATION ............................................ |fops-config|
+
+
+================================================================================
+INTRODUCTION                                                          *fops-intro*
+
+"FOPS" is short for "File Operations". This plugin provides several convenience
+commands that interface with files on the file system. By default, each command
+interacts with the file being edited by your current/selected buffer in Vim,
+but you can also specify the path to a different file, and use other
+command-line options to tweak FOPS' behavior.
+
+Each command utilizies the argument parsing and tab completion provided by
+|argonaut| (a separate vim plugin) to provide a clean and intuitive user
+interface.
+
+
+================================================================================
+COMMANDS                                                           *fops-commands*
+
+The following commands are provided by this plugin. (For each command you can
+always run with `-h` or `--help` to see a menu of all possible command-line
+options!)
+
+`:File` - Displays general information about your buffer's current file, or the
+full path of *any* file you specify:
+
+>
+    :File
+    :File ~/.bashrc
+<
+
+`:FilePath` - Displays the full path of your buffer's current file, or the full
+path of *any* file you specify:
+
+>
+    :FilePath
+    :FilePath ~/.bashrc
+<
+
+`:FileType` - Effectively a wrapper for the Linux `file` command; this displays
+the type of contents found within the current (or specified) file:
+
+>
+    :FileType
+    :FileType ~/.bashrc
+<
+
+`:FileSize` - Displays the total number of bytes in a file:
+
+>
+    :FileSize
+    :FileSize ~/.bashrc
+<
+
+`:FileDelete` - Deletes the current file or some other file from the
+filesystem.
+
+>
+    :FileDelete
+    :FileDelete ~/notes/file.txt
+
+    " Want to wipe your current buffer after deleting its file?
+    :FileDelete -e
+<
+
+`:FileCopy` - Copies the current file (or some other file) to a new location.
+
+>
+    :FileCopy /path/to/destination.txt
+    :FileCopy /path/to/source.txt /path/to/destination.txt
+
+    " Want to edit the new copy in the current buffer?
+    :FileCopy /path/to/destination.txt -e
+<
+
+`:FileMove` - Moves the current file (or some other file) to a new location.
+
+>
+    :FileMove /path/to/destination.txt
+    :FileMove /path/to/source.txt /path/to/destination.txt
+
+    " Want to edit the relocated file in the current buffer?
+    :FileMove /path/to/destination.txt -e
+<
+
+`:FileRename` - Renames the current file (or some other file). Only the file
+name is modified; its location in its current parent directory is unchanged.
+
+>
+    :FileRename newname.txt
+    :FileRename /path/to/old.txt newname.txt
+
+    " Want to edit the renamed file in the current buffer?
+    :FileRename newname.txt -e
+
+    " Want to rename the name, but keep the same extension?
+    :FileRename -rn newname
+
+    " Want to rename the extension, but keep the same name?
+    :FileRename -re md
+<
+
+`:FileYank` - Copies aspects of a file's path into a register. (By default, the
+unnamed (`"`) register is used, but any register can be written to by
+specifying the `--register` argument.)
+
+>
+    " To yank the full file path of the current (or some other) file:
+    :FileYank
+    :FileYank /path/to/file.txt
+    
+    " To yank into register `@a`:
+    :FileYank -r a
+    :FileYank /path/to/file.txt -r a
+    
+    " Want to yank only the basename?
+    :FileYank -yb
+    
+    " Want to yank only the dirname?
+    :FileYank -yd
+    
+    " Want to yank only the extension?
+    :FileYank -ye
+<
+
+`:FileFind` - Searches for files matching a specific glob-string and displays
+the results. To select one of the matching files to edit in your current
+buffer, use `-e`.
+
+>
+    " To search from the directory your current buffer's file is in:
+    :FileFind *.txt
+    
+    " To search from some other directory:
+    :FileFind ${HOME}/notes *.txt
+    
+    " To update your buffer to edit one of the matching files:
+    :FileFind ${HOME}/notes *.txt -e
+<
+
+`:FileTree` - Displays a tree of all files underneath the current (or some
+other) file's parent directory. To select one of the displayed files to edit in
+your current buffer, use `-e`.
+
+>
+    :FileTree
+    :FileTree ${HOME}/notes
+    
+    " To update your buffer to edit one of the displayed files:
+    :FileTree ${HOME}/notes -e
+<
+
+
+================================================================================
+CONFIGURATION                                                        *fops-config*
+
+FOPS comes with a number of fields that can be configured to adjust the
+plugin's behavior. Each field can be accessed and set through the following
+function interface:
+
+`fops#config#set(field, value)` - Sets the configuration field with the name
+specified by `field` to store the given `value`.
+
+`fops#config#get(field)` - Retrieves the current value of the configuration
+field with the name specified by `field`.
+
+All possible configuration fields are listed below, along with a description of
+their purpose, and their default values.
+
+* `show_verbose_prints` - (default: `v:false`)
+    * If set to `v:true`/`1`, this will enable verbose print messages when
+      running commands.
+* `show_debug_prints` - (default: `v:false`)
+    * If set to `v:true`/`1`, this will enable debug print messages when
+      running commands.
+* `print_prefix` - (default: `''`)
+    * This sets the prefix printed before all standard plugin messages (by
+      default, there is no prefix).
+* `debug_print_prefix` - (default: `'FOPS-Debug: '`)
+    * This sets the prefix printed before all debug messages.
+* `error_print_prefix` - (default: `'FOPS-Error: '`)
+    * This sets the prefix printed before all error messages.
+* `sanity_print_prefix` - (default: `'FOPS-Sanity-Check: '`)
+    * This sets the prefix printed before all sanity-check failure messages.
+* `prompt_for_overwrite_file` - (default: `v:true`)
+    * If set to `v:true`/`1`, FOPS will prompt you to confirm that you would
+      like to overwrite an existing file when performing copies, moves,
+      renames, etc.
+* `prompt_for_delete_file` - (default: `v:true`)
+    * If set to `v:true`/`1`, FOPS will prompt you to confirm that you would
+      like to delete a specified file.
+* `prompt_for_delete_dir` - (default: `v:true`)
+    * If set to `v:true`/`1`, FOPS will prompt you to confirm that you would
+      like to recursively delete a specified directory.
+
+For example, if you wished to enable debug prints, and disable the prompt for
+overwriting existing files, add the following to your `.vimrc`:
+
+>
+    call fops#config#set('show_debug_prints`, v:true)
+    call fops#config#set('prompt_for_overwrite_file`, v:false)
+<
+
