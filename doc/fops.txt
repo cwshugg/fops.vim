@@ -1,11 +1,11 @@
 *fops* *fops.txt* *FOPS*
 
-      __                 
-     / _| ___  _ __  ___ 
-    | |_ / _ \| '_ \/ __|
-    |  _| (_) | |_) \__ \
-    |_|  \___/| .__/|___/
-              |_|        
+        ____                
+       / __/___  ____  _____
+      / /_/ __ \/ __ \/ ___/
+     / __/ /_/ / /_/ (__  ) 
+    /_/  \____/ .___/____/  
+             /_/             
 
     By Connor Shugg <connor@shugg.dev>~
 
@@ -58,7 +58,7 @@ full path of *any* file you specify:
 <
 
 `:FilePath` - Displays the full path of your buffer's current file, or the full
-path of *any* file you specify:
+path of any file you specify:
 
 >
     :FilePath
