@@ -766,7 +766,7 @@ function! fops#commands#file_rename(input) abort
         if argonaut#argparser#has_arg(l:parser, '--rename-name')
             " if only the name is to be changed, we'll keep the extension
             let l:old_ext = fops#utils#path_get_extension(l:src)
-            let l:dst = fops#utils#path_remove_extension(l:src) . '.' . l:old_ext
+            let l:dst = fops#utils#path_remove_extension(l:dst) . '.' . l:old_ext
             call fops#utils#print_debug('New file path ' .
                                       \ '(new name, same extension): "' .
                                       \ l:dst . '"')

@@ -9,9 +9,28 @@ matches to edit? FOPS has you covered there, too.
 
 ## Demo
 
-Here's a quick demonstration of some of FOPS' functionality:
+Use FOPS to retrieve file information, make copies, move files, delete files,
+and rename files. Notice how by specifying the `-e`/`--edit` option in the
+below GIF, the current Vim window automatically is updated to edit the new
+file:
 
-TODO - GIF!
+![](https://shugg.dev/images/fops.vim/fops_demo_commands.gif)
+
+You can also use the `FileYank` command to write various components of file
+paths into the Vim registers:
+
+![](https://shugg.dev/images/fops.vim/fops_demo_yank.gif)
+
+Need to find a file by name? Use glob-searching in `FileFind` to list all files
+that match your search. Include `-e`/`--edit` to select one of the results to
+update your current Vim buffer:
+
+![](https://shugg.dev/images/fops.vim/fops_demo_find.gif)
+
+Want to view the entire file tree (and, you guessed it, select a file to edit
+using `-e`/`--edit`)? Use `FileTree`:
+
+![](https://shugg.dev/images/fops.vim/fops_demo_tree.gif)
 
 ## Installation
 
