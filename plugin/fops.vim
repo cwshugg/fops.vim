@@ -42,6 +42,13 @@ command!
     \ FileSize
     \ call fops#commands#file_size(<q-args>)
 
+" Edit - Modifies the current buffer to edit the specified file.
+command!
+    \ -nargs=*
+    \ -complete=customlist,fops#commands#file_edit_complete
+    \ FileEdit
+    \ call fops#commands#file_edit(<q-args>)
+
 " Find - Searches for a specified file or directory.
 command!
     \ -nargs=*

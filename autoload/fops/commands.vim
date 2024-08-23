@@ -391,6 +391,55 @@ function! fops#commands#file_size(input) abort
 endfunction
 
 
+" ============================ File Edit Command ============================= "
+let s:file_edit_argset = argonaut#argset#new([s:arg_help])
+
+" Tab completion helper function for the edit command.
+function! fops#commands#file_edit_complete(arg, line, pos)
+    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_edit_argset)
+endfunction
+
+" Help menu function.
+function! fops#commands#file_edit_maybe_show_help(parser) abort
+    if s:should_show_help(a:parser)
+        call fops#utils#print("FileEdit: Displays the number of bytes stored in a file.")
+        call fops#utils#print('Usage: FileEdit [/path/to/file]')
+        call argonaut#argparser#show_help(a:parser)
+        return v:true
+    endif
+    return v:false
+endfunction
+
+" Main function for the edit command.
+function! fops#commands#file_edit(input) abort
+    let l:parser = argonaut#argparser#new(s:file_edit_argset)
+    try
+        call fops#utils#print_debug('Executing the file-edit command.')
+
+        " parse command-line arguments
+        call argonaut#argparser#parse(l:parser, a:input)
+        if fops#commands#file_edit_maybe_show_help(l:parser)
+            return
+        endif
+    
+        " get the source file to edit
+        let l:src = s:get_inputs(l:parser, 1, [1])[0]
+        call fops#utils#print_debug('Source file: ' . l:src)
+        
+        " update the buffer to edit the file
+        call s:retarget_current_buffer(l:src)
+        if fops#config#get('show_verbose_prints')
+            let l:msg = 'Buffer updated to edit file "' .
+                      \ l:src . '".'
+            call s:print_verbose(l:msg)
+        endif
+    catch
+        call fops#commands#file_size_maybe_show_help(l:parser)
+        call fops#utils#print_error(v:exception)
+    endtry
+endfunction
+
+
 " ============================ File Find Command ============================= "
 let s:file_find_argset = argonaut#argset#new([s:arg_help, s:arg_edit])
 
@@ -482,13 +531,11 @@ function! fops#commands#file_find(input) abort
             endif
             
             " update the current buffer with the selection
-            let l:buffer_updated = s:retarget_current_buffer(l:selection)
-            if l:buffer_updated
-                if fops#config#get('show_verbose_prints')
-                    let l:msg = 'Buffer updated to edit file "' .
-                              \ l:selection . '".'
-                    call s:print_verbose(l:msg)
-                endif
+            call s:retarget_current_buffer(l:selection)
+            if fops#config#get('show_verbose_prints')
+                let l:msg = 'Buffer updated to edit file "' .
+                          \ l:selection . '".'
+                call s:print_verbose(l:msg)
             endif
         endif
     catch
@@ -1053,13 +1100,11 @@ function! fops#commands#file_tree(input) abort
             let l:selection = l:files[l:idx - 1]
 
             " update the current buffer with the selection
-            let l:buffer_updated = s:retarget_current_buffer(l:selection)
-            if l:buffer_updated
-                if fops#config#get('show_verbose_prints')
-                    let l:msg = 'Buffer updated to edit file "' .
-                              \ l:selection . '".'
-                    call s:print_verbose(l:msg)
-                endif
+            call s:retarget_current_buffer(l:selection)
+            if fops#config#get('show_verbose_prints')
+                let l:msg = 'Buffer updated to edit file "' .
+                          \ l:selection . '".'
+                call s:print_verbose(l:msg)
             endif
         endif
     catch
