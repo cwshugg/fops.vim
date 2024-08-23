@@ -76,13 +76,6 @@ of *any* file you specify:
 :File ~/.bashrc
 ```
 
-### `FileEdit`
-
-TODO
-TODO - ADD DOCS FOR NEW COMMANDS
-TODO - ADD '-ep' or '--edit-push' TO ALL COMMANDS, SO STACK CAN BE PUSHED TO FROM ANYWHERE
-TODO
-
 ### `FilePath`
 
 Displays the full path of your buffer's current file, or the full path of *any*
@@ -110,6 +103,38 @@ Displays the total number of bytes in a file:
 ```vim
 :FileSize
 :FileSize ~/.bashrc
+```
+
+### `FileEdit`
+
+Updates the current buffer to edit a new file. Just like `:edit`, but it
+additionally pushes the old file to the current buffer's file stack. (See the
+`FilePop` command for why you might find this useful.)
+
+```vim
+:FileEdit
+:FileEdit ~/.bashrc
+```
+
+### `FileStack`
+
+Displays the contents of the current buffer's file stack. If you used other
+FOPS commands while in this buffer to edit new files (such as `FileEdit`,
+`FileFind -e`, or `FileTree -e`), then FOPS has internally pushed old files to
+a stack, specified to this buffer. This command allows you to see whats in the
+stack.
+
+```vim
+:FileStack
+```
+
+### `FilePop`
+
+Pops the top entry off of the current buffer's file stack, and modifies the
+buffer to edit the popped file.
+
+```vim
+:FilePop
 ```
 
 ### `FileDelete`
