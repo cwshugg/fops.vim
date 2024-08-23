@@ -23,6 +23,30 @@ call argonaut#arg#set_description(s:arg_edit,
     \ 'Updates the current buffer to edit the relocated/renamed/modified file.'
 \ )
 
+" The `-l`/`--line` argument is used by certain commands that involve
+" modifying the current buffer. This allows the user to specify a line number
+" to jump to.
+let s:arg_cursor_line = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_cursor_line, argonaut#argid#new('-', 'l'))
+call argonaut#arg#add_argid(s:arg_cursor_line, argonaut#argid#new('--', 'line'))
+call argonaut#arg#set_description(s:arg_cursor_line,
+    \ 'Sets the line number to jump the cursor to.'
+\ )
+call argonaut#arg#set_value_required(s:arg_cursor_line, 1)
+call argonaut#arg#set_value_hint(s:arg_cursor_line, 'LINE_NUMBER')
+
+" The `-c`/`--column` argument is used by certain commands that involve
+" modifying the current buffer. This allows the user to specify a column
+" number to jump to.
+let s:arg_cursor_col = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_cursor_col, argonaut#argid#new('-', 'c'))
+call argonaut#arg#add_argid(s:arg_cursor_col, argonaut#argid#new('--', 'column'))
+call argonaut#arg#set_description(s:arg_cursor_col,
+    \ 'Sets the line number to jump the cursor to.'
+\ )
+call argonaut#arg#set_value_required(s:arg_cursor_col, 1)
+call argonaut#arg#set_value_hint(s:arg_cursor_col, 'COLUMN_NUMBER')
+
 
 " ================================= Helpers ================================== "
 " Prints a verbose message. The print only occurs if verbose messages are
@@ -39,7 +63,7 @@ function! s:should_show_help(parser) abort
 endfunction
 
 " Updates the current buffer to modify the file at the given path.
-function! s:retarget_current_buffer(path) abort
+function! s:retarget_current_buffer(path, ...) abort
     " make sure the given file path is a valid file or directory
     if !fops#utils#path_is_file(a:path) && !fops#utils#path_is_dir(a:path)
         let l:errmsg .= 'The provided path (' . a:path .
@@ -48,14 +72,32 @@ function! s:retarget_current_buffer(path) abort
     endif
 
     " open the new file in the current buffer
+    call fops#utils#print_debug('Updating buffer to edit: ' . a:path)
     :silent execute 'edit ' . a:path
+
+    " examine the arguments; if more than one was given, interpret the next
+    " two as a line number and column number to jump to
+    let l:cursor_line = line('.')
+    let l:cursor_col = col('.')
+    if a:0 > 0
+        let l:cursor_line = a:1
+    end
+    if a:0 > 1
+        let l:cursor_col = a:2
+    end
+    
+    " update the cursor
+    call fops#utils#print_debug('Setting cursor position to: line=' .
+                              \ l:cursor_line . ', col=' .
+                              \ l:cursor_col . '.')
+    call cursor(l:cursor_line, l:cursor_col)
 endfunction
 
 " Checks the given parser for the presence of the `--edit` argument. If it's
 " present, the current buffer is updated to edit the given file path.
 "
 " Returns true if the buffer was updated.
-function! s:maybe_retarget_current_buffer(parser, path) abort
+function! s:maybe_retarget_current_buffer(parser, path, ...) abort
     " if `--edit` was not provided, quit early
     if !argonaut#argparser#has_arg(a:parser, '-e')
         return v:false
@@ -68,7 +110,7 @@ function! s:maybe_retarget_current_buffer(parser, path) abort
         return v:true
     endif
     
-    call s:retarget_current_buffer(a:path)
+    call s:retarget_current_buffer(a:path, a:000)
     return v:true
 endfunction
 
@@ -392,7 +434,7 @@ endfunction
 
 
 " ============================ File Edit Command ============================= "
-let s:file_edit_argset = argonaut#argset#new([s:arg_help])
+let s:file_edit_argset = argonaut#argset#new([s:arg_help, s:arg_cursor_line, s:arg_cursor_col])
 
 " Tab completion helper function for the edit command.
 function! fops#commands#file_edit_complete(arg, line, pos)
@@ -425,9 +467,23 @@ function! fops#commands#file_edit(input) abort
         " get the source file to edit
         let l:src = s:get_inputs(l:parser, 1, [1])[0]
         call fops#utils#print_debug('Source file: ' . l:src)
+
+        " grab the line/col numbers, if they were provided
+        let l:cursor_line = 1
+        let l:cursor_col = 1
+        let l:input_line = argonaut#argparser#get_arg(l:parser, '--line')
+        if len(l:input_line) > 0
+            let l:cursor_line = l:input_line[0]
+            call fops#utils#print_debug('Line number to jump to: ' . l:cursor_line)
+        end
+        let l:input_col = argonaut#argparser#get_arg(l:parser, '--column')
+        if len(l:input_col) > 0
+            let l:cursor_col = l:input_col[0]
+            call fops#utils#print_debug('Column to jump to: ' . l:cursor_col)
+        end
         
         " update the buffer to edit the file
-        call s:retarget_current_buffer(l:src)
+        call s:retarget_current_buffer(l:src, l:cursor_line, l:cursor_col)
         if fops#config#get('show_verbose_prints')
             let l:msg = 'Buffer updated to edit file "' .
                       \ l:src . '".'

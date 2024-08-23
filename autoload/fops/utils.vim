@@ -47,7 +47,7 @@ endfunction
 function! fops#utils#sanity(condition, ...) abort
     if !a:condition
         let l:errmsg = 'Sanity check failed.'
-        if a:0 > 1
+        if a:0 > 0
             let l:errmsg = a:1
         endif
         
