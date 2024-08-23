@@ -204,7 +204,7 @@ endfunction
 " =============================== File Command =============================== "
 let s:file_argset = argonaut#argset#new([s:arg_help])
 
-" Tab completion helper function for the path command.
+" Tab completion helper function for the file command.
 function! fops#commands#file_complete(arg, line, pos)
     return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_argset)
 endfunction
@@ -220,7 +220,7 @@ function! fops#commands#file_maybe_show_help(parser) abort
     return v:false
 endfunction
 
-" Main function for the path command.
+" Main function for the file command.
 function! fops#commands#file(input) abort
     let l:parser = argonaut#argparser#new(s:file_argset)
     try
@@ -703,6 +703,7 @@ function! fops#commands#file_move_maybe_show_help(parser) abort
     return v:false
 endfunction
 
+" Main function for the move command.
 function! fops#commands#file_move(input) abort
     let l:parser = argonaut#argparser#new(s:file_move_argset)
     try
@@ -790,6 +791,7 @@ function! fops#commands#file_rename_maybe_show_help(parser) abort
     return v:false
 endfunction
 
+" Main function for the rename command.
 function! fops#commands#file_rename(input) abort
     let l:parser = argonaut#argparser#new(s:file_rename_argset)
     try
@@ -938,6 +940,7 @@ function! fops#commands#file_yank_maybe_show_help(parser) abort
     return v:false
 endfunction
 
+" Main function for the yank command.
 function! fops#commands#file_yank(input) abort
     let l:parser = argonaut#argparser#new(s:file_yank_argset)
     try
@@ -950,7 +953,7 @@ function! fops#commands#file_yank(input) abort
         endif
         
         " retrieve the source file and the register the user wants to write to
-        let l:path = s:get_inputs(l:parser, 1, [1])[0]
+        let l:path = s:get_inputs(l:parser, 1, [0])[0]
         let l:reg = s:get_register(l:parser)
         call fops#utils#print_debug('Source file: ' . l:path)
         call fops#utils#print_debug('Target register: ' . l:reg)
