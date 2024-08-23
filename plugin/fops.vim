@@ -49,13 +49,13 @@ command!
     \ FileEdit
     \ call fops#commands#file_edit(<q-args>)
 
-" Push - Modifies the current buffer to edit the specified file, while saving
-" the previous file to the buffer's fops-internal file stack.
+" Stack - Allows the user to see the fops-internal file stack data structure
+" stored for the current buffer.
 command!
     \ -nargs=*
-    \ -complete=customlist,fops#commands#file_push_complete
-    \ FilePush
-    \ call fops#commands#file_push(<q-args>)
+    \ -complete=customlist,fops#commands#file_stack_complete
+    \ FileStack
+    \ call fops#commands#file_stack(<q-args>)
 
 " Pop - Pops the latest entry off of the buffer's fops-internal file stack,
 " and updates the buffer to edit the file.

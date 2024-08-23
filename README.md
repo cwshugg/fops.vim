@@ -76,6 +76,13 @@ of *any* file you specify:
 :File ~/.bashrc
 ```
 
+### `FileEdit`
+
+TODO
+TODO - ADD DOCS FOR NEW COMMANDS
+TODO - ADD '-ep' or '--edit-push' TO ALL COMMANDS, SO STACK CAN BE PUSHED TO FROM ANYWHERE
+TODO
+
 ### `FilePath`
 
 Displays the full path of your buffer's current file, or the full path of *any*

@@ -13,14 +13,12 @@ call argonaut#arg#set_description(s:arg_help,
 
 " The `-e`/`--edit` argument is used by several of the commands in this
 " plugin. This allows the user to tell the command to re-open the
-" renamed/remodified file in the current buffer.
+" renamed/remodified/selected file in the current buffer.
 let s:arg_edit = argonaut#arg#new()
 call argonaut#arg#add_argid(s:arg_edit, argonaut#argid#new('-', 'e'))
 call argonaut#arg#add_argid(s:arg_edit, argonaut#argid#new('--', 'edit'))
-call argonaut#arg#add_argid(s:arg_edit, argonaut#argid#new('-', 'u'))
-call argonaut#arg#add_argid(s:arg_edit, argonaut#argid#new('--', 'update-buffer'))
 call argonaut#arg#set_description(s:arg_edit,
-    \ 'Updates the current buffer to edit the relocated/renamed/modified file.'
+    \ 'Updates the current buffer to edit the modified/selected file.'
 \ )
 
 " The `-l`/`--line` argument is used by certain commands that involve
@@ -62,13 +60,42 @@ function! s:should_show_help(parser) abort
     return argonaut#argparser#has_arg(a:parser, '-h')
 endfunction
 
+" Pushes information about the current buffer to the buffer's file stack.
+function! s:push_current_buffer() abort
+    " create a new file stack entry and store the current file's
+    " information in it
+    let l:entry = fops#fstack_entry#new()
+    call fops#fstack_entry#set_path(l:entry, fops#utils#get_current_file())
+    call fops#fstack_entry#set_cursor_line(l:entry, line('.'))
+    call fops#fstack_entry#set_cursor_col(l:entry, col('.'))
+
+    " retrieve the current buffer's file stack object, and push the new
+    " entry to it
+    let l:buffer = fops#utils#get_buffer_id()
+    let l:buffer_fstack = fops#fstack_table#get(l:buffer)
+    call fops#fstack#push(l:buffer_fstack, l:entry)
+    call fops#utils#print_debug('Pushed file (' .
+                              \ fops#fstack_entry#get_path(l:entry) .
+                              \ ') to file stack for buffer ' .
+                              \ l:buffer . '. (Stack has ' .
+                              \ fops#fstack#size(l:buffer_fstack) .
+                              \ ' entries.)')
+endfunction
+
 " Updates the current buffer to modify the file at the given path.
-function! s:retarget_current_buffer(path, ...) abort
+function! s:retarget_current_buffer(path, do_push, ...) abort
     " make sure the given file path is a valid file or directory
     if !fops#utils#path_is_file(a:path) && !fops#utils#path_is_dir(a:path)
         let l:errmsg .= 'The provided path (' . a:path .
                       \ ') is not a valid file or directory.'
         call fops#utils#panic(l:errmsg)
+    endif
+
+    " before updating the current buffer, push its information to the current
+    " buffer's file stack. This way, the user can return to it by calling
+    " :FilePop
+    if a:do_push
+        call s:push_current_buffer()
     endif
 
     " open the new file in the current buffer
@@ -97,7 +124,7 @@ endfunction
 " present, the current buffer is updated to edit the given file path.
 "
 " Returns true if the buffer was updated.
-function! s:maybe_retarget_current_buffer(parser, path, ...) abort
+function! s:maybe_retarget_current_buffer(parser, path, do_push, ...) abort
     " if `--edit` was not provided, quit early
     if !argonaut#argparser#has_arg(a:parser, '-e')
         return v:false
@@ -110,7 +137,7 @@ function! s:maybe_retarget_current_buffer(parser, path, ...) abort
         return v:true
     endif
     
-    call s:retarget_current_buffer(a:path, a:000)
+    call s:retarget_current_buffer(a:path, a:do_push, a:000)
     return v:true
 endfunction
 
@@ -481,7 +508,7 @@ function! fops#commands#file_edit(input) abort
         end
         
         " update the buffer to edit the file
-        call s:retarget_current_buffer(l:src, l:cursor_line, l:cursor_col)
+        call s:retarget_current_buffer(l:src, v:true, l:cursor_line, l:cursor_col)
         if fops#config#get('show_verbose_prints')
             let l:msg = 'Buffer updated to edit file "' .
                       \ l:src . '".'
@@ -494,81 +521,70 @@ function! fops#commands#file_edit(input) abort
 endfunction
 
 
-" ============================ File Push Command ============================= "
-let s:file_push_argset = argonaut#argset#new([s:arg_help, s:arg_cursor_line, s:arg_cursor_col])
+" ============================ File Stack Command ============================ "
+let s:file_stack_argset = argonaut#argset#new([s:arg_help])
 
-" Tab completion helper function for the push command.
-function! fops#commands#file_push_complete(arg, line, pos)
-    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_push_argset)
+" Tab completion helper function for the stack command.
+function! fops#commands#file_stack_complete(arg, line, pos)
+    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_stack_argset)
 endfunction
 
 " Help menu function.
-function! fops#commands#file_push_maybe_show_help(parser) abort
+function! fops#commands#file_stack_maybe_show_help(parser) abort
     if s:should_show_help(a:parser)
-        call fops#utils#print("FilePush: Pushes a new file to the buffer's file stack.")
-        call fops#utils#print('Usage: FilePush [/path/to/file]')
+        call fops#utils#print("FileStack: Interact with the current buffer's file stack.")
+        call fops#utils#print('Usage: FileStack')
         call argonaut#argparser#show_help(a:parser)
         return v:true
     endif
     return v:false
 endfunction
 
-" Main function for the push command.
-function! fops#commands#file_push(input) abort
-    let l:parser = argonaut#argparser#new(s:file_push_argset)
+" Main function for the stack command.
+function! fops#commands#file_stack(input) abort
+    let l:parser = argonaut#argparser#new(s:file_stack_argset)
     try
-        call fops#utils#print_debug('Executing the file-push command.')
+        call fops#utils#print_debug('Executing the file-stack command.')
 
         " parse command-line arguments
         call argonaut#argparser#parse(l:parser, a:input)
-        if fops#commands#file_push_maybe_show_help(l:parser)
+        if fops#commands#file_stack_maybe_show_help(l:parser)
             return
         endif
-    
-        " get the new file to edit
-        let l:nf_path = s:get_inputs(l:parser, 1, [1])[0]
-        call fops#utils#print_debug('Source file: ' . l:nf_path)
-
-        " create a new file stack entry and store the current file's
-        " information in it
-        let l:entry = fops#fstack_entry#new()
-        call fops#fstack_entry#set_path(l:entry, fops#utils#get_current_file())
-        call fops#fstack_entry#set_cursor_line(l:entry, line('.'))
-        call fops#fstack_entry#set_cursor_col(l:entry, col('.'))
-
-        " retrieve the current buffer's file stack object, and push the new
-        " entry to it
+        
+        " retrieve the current buffer's file stack
         let l:buffer = fops#utils#get_buffer_id()
         let l:buffer_fstack = fops#fstack_table#get(l:buffer)
-        call fops#fstack#push(l:buffer_fstack, l:entry)
-        call fops#utils#print_debug('Pushed old file (' .
-                                  \ fops#fstack_entry#get_path(l:entry) .
-                                  \ ') to file stack for buffer ' .
-                                  \ l:buffer . '. (Stack has ' .
-                                  \ fops#fstack#size(l:buffer_fstack) .
-                                  \ ' entries.)')
 
-        " grab the line/col numbers for the new file, if they were provided
-        let l:nf_line = 1
-        let l:nf_col = 1
-        let l:input_line = argonaut#argparser#get_arg(l:parser, '--line')
-        let l:input_col = argonaut#argparser#get_arg(l:parser, '--column')
-        if len(l:input_line) > 0
-            let l:nf_line = l:input_line[0]
-        end
-        if len(l:input_col) > 0
-            let l:nf_col = l:input_col[0]
-        end
-        
-        " update the buffer to edit the file
-        call s:retarget_current_buffer(l:nf_path, l:nf_line, l:nf_col)
-        if fops#config#get('show_verbose_prints')
-            let l:msg = 'Buffer updated to edit file "' .
-                      \ l:nf_path . '".'
-            call s:print_verbose(l:msg)
+        " if the stack is empty, report it and exit
+        let l:stack_len = len(l:buffer_fstack.stack)
+        if l:stack_len == 0
+            call fops#utils#print('This buffer (ID: ' . l:buffer . ') ' .
+                                \ 'has an empty file stack.')
+            return
         endif
+
+        " otherwise, we'll show all stack entries
+        call fops#utils#print('This buffer (ID: ' . l:buffer . ') ' .
+                            \ 'has ' . l:stack_len . ' entries in its ' .
+                            \ 'file stack.')
+        for l:i in range(l:stack_len)
+            let l:entry = l:buffer_fstack.stack[l:i]
+            
+            " decide on an appropriate prefix to print
+            let l:prefix = '   |    '
+            if l:i == 0
+                let l:prefix = '  TOP   '
+            elseif l:i == (l:stack_len - 1)
+                let l:prefix = ' BOTTOM '
+            endif
+
+            " print out the prefix, the number, and the file path
+            call fops#utils#print(l:prefix . ' ' . (l:i + 1) . '. ' .
+                                \ fops#fstack_entry#get_path(l:entry))
+        endfor
     catch
-        call fops#commands#file_push_maybe_show_help(l:parser)
+        call fops#commands#file_stack_maybe_show_help(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction
@@ -626,6 +642,7 @@ function! fops#commands#file_pop(input) abort
         
         " update the buffer to edit the popped file
         call s:retarget_current_buffer(fops#fstack_entry#get_path(l:entry),
+                                     \ v:false,
                                      \ fops#fstack_entry#get_cursor_line(l:entry),
                                      \ fops#fstack_entry#get_cursor_col(l:entry))
         if fops#config#get('show_verbose_prints')
@@ -731,7 +748,7 @@ function! fops#commands#file_find(input) abort
             endif
             
             " update the current buffer with the selection
-            call s:retarget_current_buffer(l:selection)
+            call s:retarget_current_buffer(l:selection, v:true)
             if fops#config#get('show_verbose_prints')
                 let l:msg = 'Buffer updated to edit file "' .
                           \ l:selection . '".'
@@ -803,7 +820,7 @@ function! fops#commands#file_delete(input) abort
 
         " if the user requested it, update the buffer to point at an empty
         " buffer
-        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, v:null)
+        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, v:false, v:null)
         
         " show a success message
         call fops#utils#print('Deletion successful.')
@@ -869,7 +886,7 @@ function! fops#commands#file_copy(input) abort
         call fops#utils#file_copy(l:src, l:dst)
 
         " if the user requested it, update the current buffer to edit the copied file
-        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:dst)
+        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, v:false, l:dst)
         
         " show a success message
         call fops#utils#print('Copy from "' . l:src . '" to "' . l:dst . '" successful.')
@@ -936,7 +953,7 @@ function! fops#commands#file_move(input) abort
         call fops#utils#file_move(l:src, l:dst)
 
         " if the user requested it, update the current buffer to edit the copied file
-        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:dst)
+        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, v:false, l:dst)
         
         " show a success message
         call fops#utils#print('Move from "' . l:src . '" to "' . l:dst . '" successful.')
@@ -955,6 +972,7 @@ endfunction
 " This argument indicates that the user wishes to rename the name, *excluding*
 " the extension.
 let s:arg_rename_name = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_rename_name, argonaut#argid#new('r', 'n'))
 call argonaut#arg#add_argid(s:arg_rename_name, argonaut#argid#new('-', 'rn'))
 call argonaut#arg#add_argid(s:arg_rename_name, argonaut#argid#new('--', 'rename-name'))
 call argonaut#arg#set_description(s:arg_rename_name,
@@ -962,6 +980,7 @@ call argonaut#arg#set_description(s:arg_rename_name,
 \ )
 
 let s:arg_rename_ext = argonaut#arg#new()
+call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('r', 'e'))
 call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('-', 're'))
 call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('--', 'rename-ext'))
 call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('--', 'rename-extension'))
@@ -1015,7 +1034,7 @@ function! fops#commands#file_rename(input) abort
         if argonaut#argparser#has_arg(l:parser, '--rename-name')
             " if only the name is to be changed, we'll keep the extension
             let l:old_ext = fops#utils#path_get_extension(l:src)
-            let l:dst = fops#utils#path_remove_extension(l:dst) . '.' . l:old_ext
+            let l:dst = fops#utils#path_remove_extension(l:src) . '.' . l:old_ext
             call fops#utils#print_debug('New file path ' .
                                       \ '(new name, same extension): "' .
                                       \ l:dst . '"')
@@ -1050,7 +1069,7 @@ function! fops#commands#file_rename(input) abort
         call fops#utils#file_move(l:src, l:dst)
 
         " if the user requested it, update the current buffer to edit the copied file
-        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:dst)
+        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, v:false, l:dst)
         
         " show a success message
         call fops#utils#print('Rename to "' . l:dst . '" successful.')
@@ -1301,7 +1320,7 @@ function! fops#commands#file_tree(input) abort
             let l:selection = l:files[l:idx - 1]
 
             " update the current buffer with the selection
-            call s:retarget_current_buffer(l:selection)
+            call s:retarget_current_buffer(l:selection, v:true)
             if fops#config#get('show_verbose_prints')
                 let l:msg = 'Buffer updated to edit file "' .
                           \ l:selection . '".'
