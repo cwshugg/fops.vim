@@ -955,7 +955,6 @@ endfunction
 " This argument indicates that the user wishes to rename the name, *excluding*
 " the extension.
 let s:arg_rename_name = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_rename_name, argonaut#argid#new('r', 'n'))
 call argonaut#arg#add_argid(s:arg_rename_name, argonaut#argid#new('-', 'rn'))
 call argonaut#arg#add_argid(s:arg_rename_name, argonaut#argid#new('--', 'rename-name'))
 call argonaut#arg#set_description(s:arg_rename_name,
@@ -963,7 +962,6 @@ call argonaut#arg#set_description(s:arg_rename_name,
 \ )
 
 let s:arg_rename_ext = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('r', 'e'))
 call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('-', 're'))
 call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('--', 'rename-ext'))
 call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('--', 'rename-extension'))
@@ -1017,7 +1015,7 @@ function! fops#commands#file_rename(input) abort
         if argonaut#argparser#has_arg(l:parser, '--rename-name')
             " if only the name is to be changed, we'll keep the extension
             let l:old_ext = fops#utils#path_get_extension(l:src)
-            let l:dst = fops#utils#path_remove_extension(l:src) . '.' . l:old_ext
+            let l:dst = fops#utils#path_remove_extension(l:dst) . '.' . l:old_ext
             call fops#utils#print_debug('New file path ' .
                                       \ '(new name, same extension): "' .
                                       \ l:dst . '"')
