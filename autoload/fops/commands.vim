@@ -444,7 +444,7 @@ endfunction
 " Help menu function.
 function! fops#commands#file_edit_maybe_show_help(parser) abort
     if s:should_show_help(a:parser)
-        call fops#utils#print("FileEdit: Displays the number of bytes stored in a file.")
+        call fops#utils#print("FileEdit: Updates the buffer to edit a new file.")
         call fops#utils#print('Usage: FileEdit [/path/to/file]')
         call argonaut#argparser#show_help(a:parser)
         return v:true
@@ -474,12 +474,10 @@ function! fops#commands#file_edit(input) abort
         let l:input_line = argonaut#argparser#get_arg(l:parser, '--line')
         if len(l:input_line) > 0
             let l:cursor_line = l:input_line[0]
-            call fops#utils#print_debug('Line number to jump to: ' . l:cursor_line)
         end
         let l:input_col = argonaut#argparser#get_arg(l:parser, '--column')
         if len(l:input_col) > 0
             let l:cursor_col = l:input_col[0]
-            call fops#utils#print_debug('Column to jump to: ' . l:cursor_col)
         end
         
         " update the buffer to edit the file
@@ -490,7 +488,153 @@ function! fops#commands#file_edit(input) abort
             call s:print_verbose(l:msg)
         endif
     catch
-        call fops#commands#file_size_maybe_show_help(l:parser)
+        call fops#commands#file_edit_maybe_show_help(l:parser)
+        call fops#utils#print_error(v:exception)
+    endtry
+endfunction
+
+
+" ============================ File Push Command ============================= "
+let s:file_push_argset = argonaut#argset#new([s:arg_help, s:arg_cursor_line, s:arg_cursor_col])
+
+" Tab completion helper function for the push command.
+function! fops#commands#file_push_complete(arg, line, pos)
+    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_push_argset)
+endfunction
+
+" Help menu function.
+function! fops#commands#file_push_maybe_show_help(parser) abort
+    if s:should_show_help(a:parser)
+        call fops#utils#print("FilePush: Pushes a new file to the buffer's file stack.")
+        call fops#utils#print('Usage: FilePush [/path/to/file]')
+        call argonaut#argparser#show_help(a:parser)
+        return v:true
+    endif
+    return v:false
+endfunction
+
+" Main function for the push command.
+function! fops#commands#file_push(input) abort
+    let l:parser = argonaut#argparser#new(s:file_push_argset)
+    try
+        call fops#utils#print_debug('Executing the file-push command.')
+
+        " parse command-line arguments
+        call argonaut#argparser#parse(l:parser, a:input)
+        if fops#commands#file_push_maybe_show_help(l:parser)
+            return
+        endif
+    
+        " get the new file to edit
+        let l:nf_path = s:get_inputs(l:parser, 1, [1])[0]
+        call fops#utils#print_debug('Source file: ' . l:nf_path)
+
+        " create a new file stack entry and store the current file's
+        " information in it
+        let l:entry = fops#fstack_entry#new()
+        call fops#fstack_entry#set_path(l:entry, fops#utils#get_current_file())
+        call fops#fstack_entry#set_cursor_line(l:entry, line('.'))
+        call fops#fstack_entry#set_cursor_col(l:entry, col('.'))
+
+        " retrieve the current buffer's file stack object, and push the new
+        " entry to it
+        let l:buffer = fops#utils#get_buffer_id()
+        let l:buffer_fstack = fops#fstack_table#get(l:buffer)
+        call fops#fstack#push(l:buffer_fstack, l:entry)
+        call fops#utils#print_debug('Pushed old file (' .
+                                  \ fops#fstack_entry#get_path(l:entry) .
+                                  \ ') to file stack for buffer ' .
+                                  \ l:buffer . '. (Stack has ' .
+                                  \ fops#fstack#size(l:buffer_fstack) .
+                                  \ ' entries.)')
+
+        " grab the line/col numbers for the new file, if they were provided
+        let l:nf_line = 1
+        let l:nf_col = 1
+        let l:input_line = argonaut#argparser#get_arg(l:parser, '--line')
+        let l:input_col = argonaut#argparser#get_arg(l:parser, '--column')
+        if len(l:input_line) > 0
+            let l:nf_line = l:input_line[0]
+        end
+        if len(l:input_col) > 0
+            let l:nf_col = l:input_col[0]
+        end
+        
+        " update the buffer to edit the file
+        call s:retarget_current_buffer(l:nf_path, l:nf_line, l:nf_col)
+        if fops#config#get('show_verbose_prints')
+            let l:msg = 'Buffer updated to edit file "' .
+                      \ l:nf_path . '".'
+            call s:print_verbose(l:msg)
+        endif
+    catch
+        call fops#commands#file_push_maybe_show_help(l:parser)
+        call fops#utils#print_error(v:exception)
+    endtry
+endfunction
+
+
+" ============================= File Pop Command ============================= "
+let s:file_pop_argset = argonaut#argset#new([s:arg_help])
+
+" Tab completion helper function for the pop command.
+function! fops#commands#file_pop_complete(arg, line, pos)
+    return argonaut#completion#complete(a:arg, a:line, a:pos, s:file_pop_argset)
+endfunction
+
+" Help menu function.
+function! fops#commands#file_pop_maybe_show_help(parser) abort
+    if s:should_show_help(a:parser)
+        call fops#utils#print("FilePop: Pops the most recent entry from the buffer's file stack.")
+        call fops#utils#print('Usage: FilePop')
+        call argonaut#argparser#show_help(a:parser)
+        return v:true
+    endif
+    return v:false
+endfunction
+
+" Main function for the pop command.
+function! fops#commands#file_pop(input) abort
+    let l:parser = argonaut#argparser#new(s:file_pop_argset)
+    try
+        call fops#utils#print_debug('Executing the file-pop command.')
+
+        " parse command-line arguments
+        call argonaut#argparser#parse(l:parser, a:input)
+        if fops#commands#file_pop_maybe_show_help(l:parser)
+            return
+        endif
+
+        " retrieve the current buffer's file stack and pop the latest entry
+        let l:buffer = fops#utils#get_buffer_id()
+        let l:buffer_fstack = fops#fstack_table#get(l:buffer)
+        let l:entry = fops#fstack#pop(l:buffer_fstack)
+        
+        " if there we no entries on the stack, print an error message
+        if l:entry is v:null
+            call fops#utils#print("There are no entries in this buffer's file stack.")
+            return
+        endif
+        
+        " otherwise...
+        call fops#utils#print_debug('Popped file (' .
+                                  \ fops#fstack_entry#get_path(l:entry) .
+                                  \ ') from file stack for buffer ' .
+                                  \ l:buffer . '. (Stack has ' .
+                                  \ fops#fstack#size(l:buffer_fstack) .
+                                  \ ' entries remaining.)')
+        
+        " update the buffer to edit the popped file
+        call s:retarget_current_buffer(fops#fstack_entry#get_path(l:entry),
+                                     \ fops#fstack_entry#get_cursor_line(l:entry),
+                                     \ fops#fstack_entry#get_cursor_col(l:entry))
+        if fops#config#get('show_verbose_prints')
+            let l:msg = 'Buffer updated to edit file "' .
+                      \ fops#fstack_entry#get_path(l:entry) . '".'
+            call s:print_verbose(l:msg)
+        endif
+    catch
+        call fops#commands#file_pop_maybe_show_help(l:parser)
         call fops#utils#print_error(v:exception)
     endtry
 endfunction

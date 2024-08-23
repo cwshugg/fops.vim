@@ -49,6 +49,22 @@ command!
     \ FileEdit
     \ call fops#commands#file_edit(<q-args>)
 
+" Push - Modifies the current buffer to edit the specified file, while saving
+" the previous file to the buffer's fops-internal file stack.
+command!
+    \ -nargs=*
+    \ -complete=customlist,fops#commands#file_push_complete
+    \ FilePush
+    \ call fops#commands#file_push(<q-args>)
+
+" Pop - Pops the latest entry off of the buffer's fops-internal file stack,
+" and updates the buffer to edit the file.
+command!
+    \ -nargs=*
+    \ -complete=customlist,fops#commands#file_pop_complete
+    \ FilePop
+    \ call fops#commands#file_pop(<q-args>)
+
 " Find - Searches for a specified file or directory.
 command!
     \ -nargs=*

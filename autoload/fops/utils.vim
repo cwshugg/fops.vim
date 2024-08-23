@@ -192,6 +192,13 @@ function! fops#utils#reg_read(name, value) abort
 endfunction
 
 
+" ============================ Buffer Operations ============================= "
+" Returns a unique identifier for the current buffer.
+function! fops#utils#get_buffer_id() abort
+    return win_getid()
+endfunction
+
+
 " ============================= File Operations ============================== "
 " Returns a string path to the file in the current buffer.
 function! fops#utils#get_current_file() abort
