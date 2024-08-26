@@ -86,8 +86,8 @@ endfunction
 function! s:retarget_current_buffer(path, do_push, ...) abort
     " make sure the given file path is a valid file or directory
     if !fops#utils#path_is_file(a:path) && !fops#utils#path_is_dir(a:path)
-        let l:errmsg .= 'The provided path (' . a:path .
-                      \ ') is not a valid file or directory.'
+        let l:errmsg = 'The provided path (' . a:path .
+                     \ ') is not a valid file or directory.'
         call fops#utils#panic(l:errmsg)
     endif
 
