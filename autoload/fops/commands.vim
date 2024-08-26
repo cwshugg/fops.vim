@@ -492,7 +492,7 @@ function! fops#commands#file_edit(input) abort
         endif
     
         " get the source file to edit
-        let l:src = s:get_inputs(l:parser, 1, [1])[0]
+        let l:src = s:get_inputs(l:parser, 1, [0])[0]
         call fops#utils#print_debug('Source file: ' . l:src)
 
         " grab the line/col numbers, if they were provided
