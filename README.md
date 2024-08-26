@@ -256,3 +256,56 @@ page:
 :h fops
 ```
 
+## File Stack API
+
+As mentioned above, FOPS keeps track of an internal file stack for each unique
+buffer in Vim. You can interact with the file stack with a few of FOPS'
+commands (push to the stack with `FileEdit`, pop with `FilePop`, view the stack
+with `FileStack`).
+
+You may want to have *your* Vim plugins/scripts interact with the file stack
+programmatically. The functions defined in `autoload/fops/fstack.vim` provide
+an interface for you to do so. Here's an example of using these functions to
+push a new entry onto the file stack for the current buffer:
+
+```vim
+function! s:your_custom_function(...)
+    " retrieve the buffer ID, so FOPS knows what buffer's file stack to modify
+    let l:buffer_id = fops#fstack#get_buffer_id()
+
+    " use the buffer ID to generate a new entry to the buffer's file stack,
+    " that represents the file that buffer is currently editing
+    let l:entry = fops#fstack#get_buffer_entry(l:buffer_id)
+
+    " (or, create one manually)
+    let l:entry = fops#fstack#entry#new()
+    call fops#fstack#entry#set_path(l:entry, '/your/custom/file/path')
+    call fops#fstack#entry#set_cursor_line(l:entry, 23)
+    call fops#fstack#entry#set_cursor_col(l:entry, 67)
+
+    " push the new entry to the buffer's file stack
+    call fops#fstack#push(l:buffer_id, l:entry)
+endfunction
+```
+
+On the flipside, here's an example showing how to pop from a buffer's file
+stack, and update the buffer to edit the popped file.
+
+```vim
+function! s:your_custom_function2(...)
+    " retrieve the buffer ID, so FOPS knows what buffer's file stack to modify
+    let l:buffer_id = fops#fstack#get_buffer_id()
+    
+    " pop and store the popped entry (make sure to check for an empty stack)
+    let l:entry = fops#fstack#pop(l:buffer_id)
+    if l:entry is v:null
+        echo 'File stack is empty for buffer #' . l:buffer_id . '!'
+        return
+    endif
+    
+    " call the handy helper function that updates the buffer (or, you can
+    " implement this bit by yourself)
+    call fops#fstack#apply(l:buffer_id, l:entry)
+endfunction
+```
+

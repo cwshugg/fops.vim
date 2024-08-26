@@ -54,3 +54,17 @@ function! fops#fstack#peek(buffer_id) abort
     return fops#fstack#stack#peek(l:fs)
 endfunction
 
+" Applies the given file stack entry to the buffer associated with the given
+" ID. The buffer is updated to edit the file specified in the entry.
+function! fops#fstack#apply(buffer_id, entry) abort
+    " force Vim to focus on the window specified by the ID
+    call win_gotoid(a:buffer_id)
+
+    " update the buffer to edit the file in the given entry
+    :silent execute 'edit ' . fops#fstack#entry#get_path(a:entry)
+
+    " update the cursor accordingly
+    call cursor(fops#fstack#entry#get_cursor_line(a:entry),
+              \ fops#fstack#entry#get_cursor_col(a:entry))
+endfunction
+
