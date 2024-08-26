@@ -64,21 +64,16 @@ endfunction
 function! s:push_current_buffer() abort
     " create a new file stack entry and store the current file's
     " information in it
-    let l:entry = fops#fstack_entry#new()
-    call fops#fstack_entry#set_path(l:entry, fops#utils#get_current_file())
-    call fops#fstack_entry#set_cursor_line(l:entry, line('.'))
-    call fops#fstack_entry#set_cursor_col(l:entry, col('.'))
+    let l:buffer = fops#fstack#get_buffer_id()
+    let l:entry = fops#fstack#get_buffer_entry(l:buffer)
 
-    " retrieve the current buffer's file stack object, and push the new
-    " entry to it
-    let l:buffer = fops#utils#get_buffer_id()
-    let l:buffer_fstack = fops#fstack_table#get(l:buffer)
-    call fops#fstack#push(l:buffer_fstack, l:entry)
+    " push the new entry to the buffer's file stack
+    call fops#fstack#push(l:buffer, l:entry)
     call fops#utils#print_debug('Pushed file (' .
-                              \ fops#fstack_entry#get_path(l:entry) .
+                              \ fops#fstack#entry#get_path(l:entry) .
                               \ ') to file stack for buffer ' .
                               \ l:buffer . '. (Stack has ' .
-                              \ fops#fstack#size(l:buffer_fstack) .
+                              \ fops#fstack#size(l:buffer) .
                               \ ' entries.)')
 endfunction
 
@@ -547,7 +542,7 @@ function! fops#commands#file_stack(input) abort
         
         " retrieve the current buffer's file stack
         let l:buffer = fops#utils#get_buffer_id()
-        let l:buffer_fstack = fops#fstack_table#get(l:buffer)
+        let l:buffer_fstack = fops#fstack#table#get(l:buffer)
 
         " if the stack is empty, report it and exit
         let l:stack_len = len(l:buffer_fstack.stack)
@@ -574,7 +569,7 @@ function! fops#commands#file_stack(input) abort
 
             " print out the prefix, the number, and the file path
             call fops#utils#print(l:prefix . ' ' . (l:i + 1) . '. ' .
-                                \ fops#fstack_entry#get_path(l:entry))
+                                \ fops#fstack#entry#get_path(l:entry))
         endfor
     catch
         call fops#commands#file_stack_maybe_show_help(l:parser)
@@ -616,8 +611,8 @@ function! fops#commands#file_pop(input) abort
 
         " retrieve the current buffer's file stack and pop the latest entry
         let l:buffer = fops#utils#get_buffer_id()
-        let l:buffer_fstack = fops#fstack_table#get(l:buffer)
-        let l:entry = fops#fstack#pop(l:buffer_fstack)
+        let l:buffer_fstack = fops#fstack#table#get(l:buffer)
+        let l:entry = fops#fstack#stack#pop(l:buffer_fstack)
         
         " if there we no entries on the stack, print an error message
         if l:entry is v:null
@@ -627,20 +622,20 @@ function! fops#commands#file_pop(input) abort
         
         " otherwise...
         call fops#utils#print_debug('Popped file (' .
-                                  \ fops#fstack_entry#get_path(l:entry) .
+                                  \ fops#fstack#entry#get_path(l:entry) .
                                   \ ') from file stack for buffer ' .
                                   \ l:buffer . '. (Stack has ' .
-                                  \ fops#fstack#size(l:buffer_fstack) .
+                                  \ fops#fstack#stack#size(l:buffer_fstack) .
                                   \ ' entries remaining.)')
         
         " update the buffer to edit the popped file
-        call s:retarget_current_buffer(fops#fstack_entry#get_path(l:entry),
+        call s:retarget_current_buffer(fops#fstack#entry#get_path(l:entry),
                                      \ v:false,
-                                     \ fops#fstack_entry#get_cursor_line(l:entry),
-                                     \ fops#fstack_entry#get_cursor_col(l:entry))
+                                     \ fops#fstack#entry#get_cursor_line(l:entry),
+                                     \ fops#fstack#entry#get_cursor_col(l:entry))
         if fops#config#get('show_verbose_prints')
             let l:msg = 'Buffer updated to edit file "' .
-                      \ fops#fstack_entry#get_path(l:entry) . '".'
+                      \ fops#fstack#entry#get_path(l:entry) . '".'
             call s:print_verbose(l:msg)
         endif
     catch

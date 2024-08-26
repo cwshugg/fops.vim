@@ -198,6 +198,15 @@ function! fops#utils#get_buffer_id() abort
     return win_getid()
 endfunction
 
+" Returns the buffer number from the given buffer ID (or, the current buffer
+" if not given).
+function! fops#utils#get_buffer_number(...) abort
+    if a:0 > 0
+        return winbufnr(a:1)
+    endif
+    return winbufnr()
+endfunction
+
 
 " ============================= File Operations ============================== "
 " Returns a string path to the file in the current buffer.

@@ -1,61 +1,56 @@
-" This file implements a file stack, which is used by some of this plugin's
-" comands to maintain a stack of files for a specific buffer.
-"
-" The idea with this 'file stack' is that the plugin user can call commands
-" such as 'FilePush' and 'FilePop' to update the current buffer with files to
-" edit, such that their previous file is opened back up after popping from the
-" stack.
+" This file defines an API intended to be used by external Vim scripts/plugins
+" to interact with the FOPS-internal file stacks for each unique buffer.
 
-" Template object for a file stack.
-" Contains a 'stack', which is just a vim script list treated as a stack data
-" structure, as well as a 'buffer ID', which is used to associate
-" the stack with a specific buffer.
-let s:fstack_template = {
-    \ 'buffer_id': v:null,
-    \ 'stack': [],
-\ }
-
-" Creates a new file stack object.
-function! fops#fstack#new() abort
-    let l:result = deepcopy(s:fstack_template)
-    return l:result
+" Gets the ID number of the current buffer.
+function! fops#fstack#get_buffer_id() abort
+    return fops#utils#get_buffer_id()
 endfunction
 
-" Returns the stack's assigned buffer ID.
-function! fops#fstack#get_buffer(stack) abort
-    return a:stack.buffer_id
+" Creates and returns a new file stack entry object representative of the
+" buffer corresponding to the given buffer ID.
+function! fops#fstack#get_buffer_entry(buffer_id) abort
+    let l:entry = fops#fstack#entry#new()
+    
+    " get the buffer number from the given ID
+    let l:buffer_num = fops#utils#get_buffer_number(a:buffer_id)
+    
+    " set attributes for the entry
+    call fops#fstack#entry#set_path(l:entry, expand("#" . l:buffer_num . ":p"))
+    call fops#fstack#entry#set_cursor_line(l:entry, getbufvar(a:buffer_id, 'line', 1))
+    call fops#fstack#entry#set_cursor_col(l:entry, getbufvar(a:buffer_id, 'col', 1))
+    return l:entry
 endfunction
 
-" Sets the stack's assigned buffer ID.
-function! fops#fstack#set_buffer(stack, bid) abort
-    let a:stack.buffer_id = a:bid
+" Retrieves and returns the file stack objects that corresponds with the given
+" buffer ID.
+function! fops#fstack#get(buffer_id) abort
+    let l:fs = fops#fstack#table#get(a:buffer_id)
+    call fops#utils#sanity(l:fs isnot v:null)
+    return l:fs
 endfunction
 
-" Returns the number of entries in the stack.
-function! fops#fstack#size(stack) abort
-    return len(a:stack.stack)
+" Returns the number of entries in the given buffer's file stack.
+function! fops#fstack#size(buffer_id) abort
+    let l:fs = fops#fstack#get(a:buffer_id)
+    return fops#fstack#stack#size(l:fs)
 endfunction
 
-" Pushes a fstack entry onto the stack.
-function! fops#fstack#push(stack, entry) abort
-    call insert(a:stack.stack, a:entry, 0)
+" Pushes the given fstack entry object onto the given buffer's file stack.
+function! fops#fstack#push(buffer_id, entry) abort
+    call fops#fstack#entry#verify(a:entry)
+    let l:fs = fops#fstack#get(a:buffer_id)
+    call fops#fstack#stack#push(l:fs, a:entry)
 endfunction
 
-" Pops the most recent entry from the stack. Returns v:null if the stack is
-" empty.
-function! fops#fstack#pop(stack) abort
-    if empty(a:stack.stack)
-        return v:null
-    endif
-    return remove(a:stack.stack, 0)
+" Pops the top entry off of the file stack and returns it.
+function! fops#fstack#pop(buffer_id) abort
+    let l:fs = fops#fstack#get(a:buffer_id)
+    return fops#fstack#stack#pop(l:fs)
 endfunction
 
-" Returns a reference to the entry at the top of the stack. Returns v:null if
-" the stack is empty.
-function! fops#fstack#peek(stack) abort
-    if empty(a:stack.stack)
-        return v:null
-    endif
-    return a:stack.stack[0]
+" Returns the top entry off of the file stack (without popping it).
+function! fops#fstack#peek(buffer_id) abort
+    let l:fs = fops#fstack#get(a:buffer_id)
+    return fops#fstack#stack#peek(l:fs)
 endfunction
 
