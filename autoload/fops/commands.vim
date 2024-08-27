@@ -125,7 +125,10 @@ function! s:maybe_retarget_current_buffer(parser, path, do_push, ...) abort
         return v:true
     endif
     
-    call s:retarget_current_buffer(a:path, a:do_push, a:000)
+    " pass all args to the retarget function (we use `call()` since we're
+    " dealing with variable-length args that are being passed along to another
+    " function)
+    call call('s:retarget_current_buffer', [a:path, a:do_push] + a:000)
     return v:true
 endfunction
 
