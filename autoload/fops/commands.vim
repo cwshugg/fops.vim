@@ -808,7 +808,7 @@ function! fops#commands#file_delete(input) abort
 
         " if the user requested it, update the buffer to point at an empty
         " buffer
-        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, v:false, v:null)
+        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, v:null, v:false)
         
         " show a success message
         call fops#utils#print('Deletion successful.')
@@ -874,7 +874,7 @@ function! fops#commands#file_copy(input) abort
         call fops#utils#file_copy(l:src, l:dst)
 
         " if the user requested it, update the current buffer to edit the copied file
-        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, v:false, l:dst)
+        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:dst, v:false)
         
         " show a success message
         call fops#utils#print('Copy from "' . l:src . '" to "' . l:dst . '" successful.')
@@ -941,7 +941,7 @@ function! fops#commands#file_move(input) abort
         call fops#utils#file_move(l:src, l:dst)
 
         " if the user requested it, update the current buffer to edit the copied file
-        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, v:false, l:dst)
+        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:dst, v:false)
         
         " show a success message
         call fops#utils#print('Move from "' . l:src . '" to "' . l:dst . '" successful.')
@@ -1057,7 +1057,7 @@ function! fops#commands#file_rename(input) abort
         call fops#utils#file_move(l:src, l:dst)
 
         " if the user requested it, update the current buffer to edit the copied file
-        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, v:false, l:dst)
+        let l:buffer_updated = s:maybe_retarget_current_buffer(l:parser, l:dst, v:false)
         
         " show a success message
         call fops#utils#print('Rename to "' . l:dst . '" successful.')
