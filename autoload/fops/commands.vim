@@ -5,8 +5,12 @@
 " The `-h`/`--help` argument is used in all of the commands in this plugin to
 " display a help menu.
 let s:arg_help = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_help, argonaut#argid#new('-', 'h'))
-call argonaut#arg#add_argid(s:arg_help, argonaut#argid#new('--', 'help'))
+let s:arg_help_argid= argonaut#argid#new('-', 'h')
+call argonaut#argid#set_show_in_autocomplete(s:arg_help_argid, 0)
+call argonaut#arg#add_argid(s:arg_help, s:arg_help_argid)
+let s:arg_help_argid= argonaut#argid#new('--', 'help')
+call argonaut#argid#set_show_in_autocomplete(s:arg_help_argid, 1)
+call argonaut#arg#add_argid(s:arg_help, s:arg_help_argid)
 call argonaut#arg#set_description(s:arg_help,
     \ 'Shows this help menu.'
 \ )
@@ -15,8 +19,12 @@ call argonaut#arg#set_description(s:arg_help,
 " plugin. This allows the user to tell the command to re-open the
 " renamed/remodified/selected file in the current buffer.
 let s:arg_edit = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_edit, argonaut#argid#new('-', 'e'))
-call argonaut#arg#add_argid(s:arg_edit, argonaut#argid#new('--', 'edit'))
+let s:arg_edit_argid= argonaut#argid#new('-', 'e')
+call argonaut#argid#set_show_in_autocomplete(s:arg_edit_argid, 0)
+call argonaut#arg#add_argid(s:arg_edit, s:arg_edit_argid)
+let s:arg_edit_argid= argonaut#argid#new('--', 'edit')
+call argonaut#argid#set_show_in_autocomplete(s:arg_edit_argid, 1)
+call argonaut#arg#add_argid(s:arg_edit, s:arg_edit_argid)
 call argonaut#arg#set_description(s:arg_edit,
     \ 'Updates the current buffer to edit the modified/selected file.'
 \ )
@@ -25,8 +33,12 @@ call argonaut#arg#set_description(s:arg_edit,
 " modifying the current buffer. This allows the user to specify a line number
 " to jump to.
 let s:arg_cursor_line = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_cursor_line, argonaut#argid#new('-', 'l'))
-call argonaut#arg#add_argid(s:arg_cursor_line, argonaut#argid#new('--', 'line'))
+let s:arg_cursor_line_argid= argonaut#argid#new('-', 'l')
+call argonaut#argid#set_show_in_autocomplete(s:arg_cursor_line_argid, 0)
+call argonaut#arg#add_argid(s:arg_cursor_line, s:arg_cursor_line_argid)
+let s:arg_cursor_line_argid= argonaut#argid#new('--', 'line')
+call argonaut#argid#set_show_in_autocomplete(s:arg_cursor_line_argid, 1)
+call argonaut#arg#add_argid(s:arg_cursor_line, s:arg_cursor_line_argid)
 call argonaut#arg#set_description(s:arg_cursor_line,
     \ 'Sets the line number to jump the cursor to.'
 \ )
@@ -37,10 +49,14 @@ call argonaut#arg#set_value_hint(s:arg_cursor_line, 'LINE_NUMBER')
 " modifying the current buffer. This allows the user to specify a column
 " number to jump to.
 let s:arg_cursor_col = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_cursor_col, argonaut#argid#new('-', 'c'))
-call argonaut#arg#add_argid(s:arg_cursor_col, argonaut#argid#new('--', 'column'))
+let s:arg_cursor_col_argid= argonaut#argid#new('-', 'c')
+call argonaut#argid#set_show_in_autocomplete(s:arg_cursor_col_argid, 0)
+call argonaut#arg#add_argid(s:arg_cursor_col, s:arg_cursor_col_argid)
+let s:arg_cursor_col_argid= argonaut#argid#new('--', 'column')
+call argonaut#argid#set_show_in_autocomplete(s:arg_cursor_col_argid, 1)
+call argonaut#arg#add_argid(s:arg_cursor_col, s:arg_cursor_col_argid)
 call argonaut#arg#set_description(s:arg_cursor_col,
-    \ 'Sets the line number to jump the cursor to.'
+    \ 'Sets the column number to jump the cursor to.'
 \ )
 call argonaut#arg#set_value_required(s:arg_cursor_col, 1)
 call argonaut#arg#set_value_hint(s:arg_cursor_col, 'COLUMN_NUMBER')
@@ -963,7 +979,6 @@ endfunction
 " This argument indicates that the user wishes to rename the name, *excluding*
 " the extension.
 let s:arg_rename_name = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_rename_name, argonaut#argid#new('r', 'n'))
 call argonaut#arg#add_argid(s:arg_rename_name, argonaut#argid#new('-', 'rn'))
 call argonaut#arg#add_argid(s:arg_rename_name, argonaut#argid#new('--', 'rename-name'))
 call argonaut#arg#set_description(s:arg_rename_name,
@@ -971,7 +986,6 @@ call argonaut#arg#set_description(s:arg_rename_name,
 \ )
 
 let s:arg_rename_ext = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('r', 'e'))
 call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('-', 're'))
 call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('--', 'rename-ext'))
 call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('--', 'rename-extension'))
@@ -1080,8 +1094,12 @@ endfunction
 " This allows the user to specify the register to store the yanked text into.
 " (By default, the unnamed/clipboard register is used.)
 let s:arg_register = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_register, argonaut#argid#new('-', 'r'))
-call argonaut#arg#add_argid(s:arg_register, argonaut#argid#new('--', 'register'))
+let s:arg_yank_argid= argonaut#argid#new('-', 'r')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
+call argonaut#arg#add_argid(s:arg_register, s:arg_yank_argid)
+let s:arg_yank_argid= argonaut#argid#new('--', 'register')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 1)
+call argonaut#arg#add_argid(s:arg_register, s:arg_yank_argid)
 call argonaut#arg#set_description(s:arg_register,
     \ 'Sets the register to store yanked text into. (The default is the unnamed register.)'
 \ )
@@ -1090,37 +1108,63 @@ call argonaut#arg#set_value_hint(s:arg_register, 'REGISTER_NAME')
 
 " This argument indicates that the user wishes to yank the full file path.
 let s:arg_yank_path = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_yank_path, argonaut#argid#new('-', 'yp'))
-call argonaut#arg#add_argid(s:arg_yank_path, argonaut#argid#new('--', 'yank-path'))
+let s:arg_yank_argid= argonaut#argid#new('-', 'yp')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
+call argonaut#arg#add_argid(s:arg_yank_path, s:arg_yank_argid)
+let s:arg_yank_argid= argonaut#argid#new('--', 'yank-path')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 1)
+call argonaut#arg#add_argid(s:arg_yank_path, s:arg_yank_argid)
 call argonaut#arg#set_description(s:arg_yank_path,
     \ "Yanks the file's full path."
 \ )
 
 " This argument indicates that the user wishes to yank the file's basename.
 let s:arg_yank_basename = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('-', 'yb'))
-call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('-', 'yn'))
-call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('--', 'yank-name'))
-call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('--', 'yank-base'))
-call argonaut#arg#add_argid(s:arg_yank_basename, argonaut#argid#new('--', 'yank-basename'))
+let s:arg_yank_argid= argonaut#argid#new('-', 'yb')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
+call argonaut#arg#add_argid(s:arg_yank_basename, s:arg_yank_argid)
+let s:arg_yank_argid= argonaut#argid#new('-', 'yn')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
+call argonaut#arg#add_argid(s:arg_yank_basename, s:arg_yank_argid)
+let s:arg_yank_argid= argonaut#argid#new('--', 'yank-name')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
+call argonaut#arg#add_argid(s:arg_yank_basename, s:arg_yank_argid)
+let s:arg_yank_argid= argonaut#argid#new('--', 'yank-base')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
+call argonaut#arg#add_argid(s:arg_yank_basename, s:arg_yank_argid)
+let s:arg_yank_argid= argonaut#argid#new('--', 'yank-basename')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 1)
+call argonaut#arg#add_argid(s:arg_yank_basename, s:arg_yank_argid)
 call argonaut#arg#set_description(s:arg_yank_basename,
     \ "Yanks the file's basename (the string appearing after the final path delimeter)."
 \ )
 
 " This argument indicates that the user wishes to yank the file's dirname.
 let s:arg_yank_dirname = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('-', 'yd'))
-call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('--', 'yank-dir'))
-call argonaut#arg#add_argid(s:arg_yank_dirname, argonaut#argid#new('--', 'yank-dirname'))
+let s:arg_yank_argid= argonaut#argid#new('-', 'yd')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
+call argonaut#arg#add_argid(s:arg_yank_dirname, s:arg_yank_argid)
+let s:arg_yank_argid= argonaut#argid#new('--', 'yank-dir')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
+call argonaut#arg#add_argid(s:arg_yank_dirname, s:arg_yank_argid)
+let s:arg_yank_argid= argonaut#argid#new('--', 'yank-dirname')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 1)
+call argonaut#arg#add_argid(s:arg_yank_dirname, s:arg_yank_argid)
 call argonaut#arg#set_description(s:arg_yank_dirname,
     \ "Yanks the file's dirname (the full string appearing before the final path delimeter)."
 \ )
 
 " This argument indicates that the user wishes to yank the file's extension.
 let s:arg_yank_ext = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('-', 'ye'))
-call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('--', 'yank-ext'))
-call argonaut#arg#add_argid(s:arg_yank_ext, argonaut#argid#new('--', 'yank-extension'))
+let s:arg_yank_argid= argonaut#argid#new('-', 'ye')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
+call argonaut#arg#add_argid(s:arg_yank_ext, s:arg_yank_argid)
+let s:arg_yank_argid= argonaut#argid#new('--', 'yank-ext')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
+call argonaut#arg#add_argid(s:arg_yank_ext, s:arg_yank_argid)
+let s:arg_yank_argid= argonaut#argid#new('--', 'yank-extension')
+call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 1)
+call argonaut#arg#add_argid(s:arg_yank_ext, s:arg_yank_argid)
 call argonaut#arg#set_description(s:arg_yank_ext,
     \ "Yanks the file's extension."
 \ )

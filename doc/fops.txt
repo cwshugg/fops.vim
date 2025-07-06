@@ -50,65 +50,66 @@ The following commands are provided by this plugin. (For each command you can
 always run with `-h` or `--help` to see a menu of all possible command-line
 options!)
 
-`:File` - Displays general information about your buffer's current file, or the
-full path of *any* file you specify:
+`:File` (`:F`) - Displays general information about your buffer's current file,
+or the full path of *any* file you specify:
 
 >
     :File
     :File ~/.bashrc
 <
 
-`:FilePath` - Displays the full path of your buffer's current file, or the full
-path of any file you specify:
+`:FilePath` (`:Fpath`) - Displays the full path of your buffer's current file,
+or the full path of any file you specify:
 
 >
     :FilePath
     :FilePath ~/.bashrc
 <
 
-`:FileType` - Effectively a wrapper for the Linux `file` command; this displays
-the type of contents found within the current (or specified) file:
+`:FileType` (`:Ftype`) - Effectively a wrapper for the Linux `file` command;
+this displays the type of contents found within the current (or specified)
+file:
 
 >
     :FileType
     :FileType ~/.bashrc
 <
 
-`:FileSize` - Displays the total number of bytes in a file:
+`:FileSize` (`:Fsize`) - Displays the total number of bytes in a file:
 
 >
     :FileSize
     :FileSize ~/.bashrc
 <
 
-`:FileEdit` - Updates the current buffer to edit a new file. Just like `:edit`,
-but it additionally pushes the old file to the current buffer's file stack.
-(See the `FilePop` command for why you might find this useful.)
+`:FileEdit` (`:Fedit`) - Updates the current buffer to edit a new file. Just
+like `:edit`, but it additionally pushes the old file to the current buffer's
+file stack. (See the `FilePop` command for why you might find this useful.)
 
 >
     :FileEdit
     :FileEdit ~/.bashrc
 <
 
-`:FileStack` - Displays the contents of the current buffer's file stack. If you
-used other FOPS commands while in this buffer to edit new files (such as
-`FileEdit`, `FileFind -e`, or `FileTree -e`), then FOPS has internally pushed
-old files to a stack, specified to this buffer. This command allows you to see
-whats in the stack.
+`:FileStack` (`:Fstack`) - Displays the contents of the current buffer's file
+stack. If you used other FOPS commands while in this buffer to edit new files
+(such as `FileEdit`, `FileFind -e`, or `FileTree -e`), then FOPS has internally
+pushed old files to a stack, specified to this buffer. This command allows you
+to see whats in the stack.
 
 >
     :FileStack
 <
 
-`:FilePop` - Pops the top entry off of the current buffer's file stack, and
-modifies the buffer to edit the popped file.
+`:FilePop` (`:Fpop`) - Pops the top entry off of the current buffer's file
+stack, and modifies the buffer to edit the popped file.
 
 >
     :FilePop
 <
 
-`:FileDelete` - Deletes the current file or some other file from the
-filesystem.
+`:FileDelete` (`:Fdelete`) - Deletes the current file or some other file from
+the filesystem.
 
 >
     :FileDelete
@@ -118,7 +119,8 @@ filesystem.
     :FileDelete -e
 <
 
-`:FileCopy` - Copies the current file (or some other file) to a new location.
+`:FileCopy` (`:Fcopy`) - Copies the current file (or some other file) to a new
+location.
 
 >
     :FileCopy /path/to/destination.txt
@@ -128,7 +130,8 @@ filesystem.
     :FileCopy /path/to/destination.txt -e
 <
 
-`:FileMove` - Moves the current file (or some other file) to a new location.
+`:FileMove` (`:Fmove`) - Moves the current file (or some other file) to a new
+location.
 
 >
     :FileMove /path/to/destination.txt
@@ -138,8 +141,9 @@ filesystem.
     :FileMove /path/to/destination.txt -e
 <
 
-`:FileRename` - Renames the current file (or some other file). Only the file
-name is modified; its location in its current parent directory is unchanged.
+`:FileRename` (`:Frename`) - Renames the current file (or some other file).
+Only the file name is modified; its location in its current parent directory is
+unchanged.
 
 >
     :FileRename newname.txt
@@ -155,9 +159,9 @@ name is modified; its location in its current parent directory is unchanged.
     :FileRename -re md
 <
 
-`:FileYank` - Copies aspects of a file's path into a register. (By default, the
-unnamed (`"`) register is used, but any register can be written to by
-specifying the `--register` argument.)
+`:FileYank` (`:Fyank`) - Copies aspects of a file's path into a register. (By
+default, the unnamed (`"`) register is used, but any register can be written to
+by specifying the `--register` argument.)
 
 >
     " To yank the full file path of the current (or some other) file:
@@ -178,9 +182,9 @@ specifying the `--register` argument.)
     :FileYank -ye
 <
 
-`:FileFind` - Searches for files matching a specific glob-string and displays
-the results. To select one of the matching files to edit in your current
-buffer, use `-e`.
+`:FileFind` (`:Ffind`) - Searches for files matching a specific glob-string and
+displays the results. To select one of the matching files to edit in your
+current buffer, use `-e`.
 
 >
     " To search from the directory your current buffer's file is in:
@@ -193,9 +197,9 @@ buffer, use `-e`.
     :FileFind ${HOME}/notes *.txt -e
 <
 
-`:FileTree` - Displays a tree of all files underneath the current (or some
-other) file's parent directory. To select one of the displayed files to edit in
-your current buffer, use `-e`.
+`:FileTree` (`:Ftree`) - Displays a tree of all files underneath the current
+(or some other) file's parent directory. To select one of the displayed files
+to edit in your current buffer, use `-e`.
 
 >
     :FileTree

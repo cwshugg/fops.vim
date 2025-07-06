@@ -66,7 +66,7 @@ The following commands are provided by this plugin. (For each command you can
 always run with `-h` or `--help` to see a menu of all possible command-line
 options!)
 
-### `File`
+### `File` (`F`)
 
 Displays general information about your buffer's current file, or the full path
 of *any* file you specify:
@@ -76,7 +76,7 @@ of *any* file you specify:
 :File ~/.bashrc
 ```
 
-### `FilePath`
+### `FilePath` (`Fpath`)
 
 Displays the full path of your buffer's current file, or the full path of *any*
 file you specify:
@@ -86,7 +86,7 @@ file you specify:
 :FilePath ~/.bashrc
 ```
 
-### `FileType`
+### `FileType` (`Ftype`)
 
 Effectively a wrapper for the Linux `file` command; this displays the type of
 contents found within the current (or specified) file:
@@ -96,7 +96,7 @@ contents found within the current (or specified) file:
 :FileType ~/.bashrc
 ```
 
-### `FileSize`
+### `FileSize` (`Fsize`)
 
 Displays the total number of bytes in a file:
 
@@ -105,7 +105,7 @@ Displays the total number of bytes in a file:
 :FileSize ~/.bashrc
 ```
 
-### `FileEdit`
+### `FileEdit` (`Fedit`)
 
 Updates the current buffer to edit a new file. Just like `:edit`, but it
 additionally pushes the old file to the current buffer's file stack. (See the
@@ -116,7 +116,7 @@ additionally pushes the old file to the current buffer's file stack. (See the
 :FileEdit ~/.bashrc
 ```
 
-### `FileStack`
+### `FileStack` (`Fstack`)
 
 Displays the contents of the current buffer's file stack. If you used other
 FOPS commands while in this buffer to edit new files (such as `FileEdit`,
@@ -128,7 +128,7 @@ stack.
 :FileStack
 ```
 
-### `FilePop`
+### `FilePop` (`Fpop`)
 
 Pops the top entry off of the current buffer's file stack, and modifies the
 buffer to edit the popped file.
@@ -137,7 +137,7 @@ buffer to edit the popped file.
 :FilePop
 ```
 
-### `FileDelete`
+### `FileDelete` (`Fdelete`)
 
 Deletes the current file or some other file from the filesystem.
 
@@ -149,7 +149,7 @@ Deletes the current file or some other file from the filesystem.
 :FileDelete -e
 ```
 
-### `FileCopy`
+### `FileCopy` (`Fcopy`)
 
 Copies the current file (or some other file) to a new location.
 
@@ -161,7 +161,7 @@ Copies the current file (or some other file) to a new location.
 :FileCopy /path/to/destination.txt -e
 ```
 
-### `FileMove`
+### `FileMove` (`Fmove`)
 
 Moves the current file (or some other file) to a new location.
 
@@ -173,7 +173,7 @@ Moves the current file (or some other file) to a new location.
 :FileMove /path/to/destination.txt -e
 ```
 
-### `FileRename`
+### `FileRename` (`Frename`)
 
 Renames the current file (or some other file). Only the file name is modified;
 its location in its current parent directory is unchanged.
@@ -192,7 +192,7 @@ its location in its current parent directory is unchanged.
 :FileRename -re md
 ```
 
-### `FileYank`
+### `FileYank` (`Fyank`)
 
 Copies aspects of a file's path into a register. (By default, the unnamed (`"`)
 register is used, but any register can be written to by specifying the
@@ -217,7 +217,7 @@ register is used, but any register can be written to by specifying the
 :FileYank -ye
 ```
 
-### `FileFind`
+### `FileFind` (`Ffind`)
 
 Searches for files matching a specific glob-string and displays the results. To
 select one of the matching files to edit in your current buffer, use `-e`.
@@ -233,7 +233,7 @@ select one of the matching files to edit in your current buffer, use `-e`.
 :FileFind ${HOME}/notes *.txt -e
 ```
 
-### `FileTree`
+### `FileTree` (`Ftree`)
 
 Displays a tree of all files underneath the current (or some other) file's
 parent directory. To select one of the displayed files to edit in your current
