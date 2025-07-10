@@ -61,6 +61,52 @@ call argonaut#arg#set_description(s:arg_cursor_col,
 call argonaut#arg#set_value_required(s:arg_cursor_col, 1)
 call argonaut#arg#set_value_hint(s:arg_cursor_col, 'COLUMN_NUMBER')
 
+" The `--dirname` argument: this is used for a few of the plugin's commands to
+" indicate the desire to view/yank/etc. the file's dirname (i.e. the full path
+" of the directory it lives in) instead of the file's path itself.
+let s:arg_dirname = argonaut#arg#new()
+let s:arg_dirname_argid = argonaut#argid#new('-', 'd')
+call argonaut#argid#set_show_in_autocomplete(s:arg_dirname_argid, 0)
+call argonaut#arg#add_argid(s:arg_dirname, s:arg_dirname_argid)
+let s:arg_dirname_argid= argonaut#argid#new('--', 'dirname')
+call argonaut#argid#set_show_in_autocomplete(s:arg_dirname_argid, 1)
+call argonaut#arg#add_argid(s:arg_dirname, s:arg_dirname_argid)
+call argonaut#arg#set_description(s:arg_dirname,
+    \ 'Request the file dirname (the path to the parent directory), rather than the file path itself.'
+\ )
+
+" The `--basename` argument: this is used for a few of the plugin's commands to
+" indicate the desire to view/yank/etc. the file's basename (i.e. the file's
+" name without the full path) instead of the full file path.
+let s:arg_basename = argonaut#arg#new()
+let s:arg_basename_argid = argonaut#argid#new('-', 'b')
+call argonaut#argid#set_show_in_autocomplete(s:arg_basename_argid, 0)
+call argonaut#arg#add_argid(s:arg_basename, s:arg_basename_argid)
+let s:arg_basename_argid= argonaut#argid#new('--', 'basename')
+call argonaut#argid#set_show_in_autocomplete(s:arg_basename_argid, 1)
+call argonaut#arg#add_argid(s:arg_basename, s:arg_basename_argid)
+call argonaut#arg#set_description(s:arg_basename,
+    \ 'Request the file basename (only the file name), rather than the full file path.'
+\ )
+
+" The `--extension` argument: this is used for a few of the plugin's commands
+" to indicate the desire to view/yank/etc. the file's extension (i.e. the
+" characters appearing after the final '.' in the file path) rather than the
+" file path itself.
+let s:arg_extension = argonaut#arg#new()
+let s:arg_extension_argid = argonaut#argid#new('-', 'E')
+call argonaut#argid#set_show_in_autocomplete(s:arg_extension_argid, 0)
+call argonaut#arg#add_argid(s:arg_extension, s:arg_extension_argid)
+let s:arg_extension_argid = argonaut#argid#new('--', 'ext')
+call argonaut#argid#set_show_in_autocomplete(s:arg_extension_argid, 0)
+call argonaut#arg#add_argid(s:arg_extension, s:arg_extension_argid)
+let s:arg_extension_argid = argonaut#argid#new('--', 'extension')
+call argonaut#argid#set_show_in_autocomplete(s:arg_extension_argid, 1)
+call argonaut#arg#add_argid(s:arg_extension, s:arg_extension_argid)
+call argonaut#arg#set_description(s:arg_extension,
+    \ 'Request the file extension (the characters appearing after the final "."), rather than the full file path.'
+\ )
+
 
 " ================================= Helpers ================================== "
 " Prints a verbose message. The print only occurs if verbose messages are
@@ -333,7 +379,28 @@ function! fops#commands#file(input) abort
 endfunction
 
 " ============================ File Path Command ============================= "
+" This argument indicates that the user wishes to display the file's basename.
+let s:arg_path_basename = deepcopy(s:arg_basename)
+call argonaut#arg#set_description(s:arg_path_basename,
+    \ "Yanks the file's basename (the string appearing after the final path delimeter)."
+\ )
+
+" This argument indicates that the user wishes to display the file's dirname.
+let s:arg_path_dirname = deepcopy(s:arg_dirname)
+call argonaut#arg#set_description(s:arg_path_dirname,
+    \ "Yanks the file's dirname (the full string appearing before the final path delimeter)."
+\ )
+
+" This argument indicates that the user wishes to display the file's extension.
+let s:arg_path_ext = deepcopy(s:arg_extension)
+call argonaut#arg#set_description(s:arg_path_ext,
+    \ "Yanks the file's extension (the characters appearing after the final '.' in the file name)."
+\ )
+
 let s:file_path_argset = argonaut#argset#new([s:arg_help])
+call argonaut#argset#add_arg(s:file_path_argset, s:arg_path_basename)
+call argonaut#argset#add_arg(s:file_path_argset, s:arg_path_dirname)
+call argonaut#argset#add_arg(s:file_path_argset, s:arg_path_ext)
 
 " Tab completion helper function for the path command.
 function! fops#commands#file_path_complete(arg, line, pos)
@@ -362,11 +429,24 @@ function! fops#commands#file_path(input) abort
         if fops#commands#file_path_maybe_show_help(l:parser)
             return
         endif
-    
-        " get the source file and display the path
+
+        " get the source file; by default, we'll print the full path
         let l:src = s:get_inputs(l:parser, 1, [1])[0]
         call fops#utils#print_debug('Source file: ' . l:src)
-        call fops#utils#print(expand(l:src))
+        let l:src_expand = expand(l:src)
+        let l:display = l:src_expand
+
+        " examine possible arguments and print accordingly
+        if argonaut#argparser#has_arg(l:parser, '--basename')
+            let l:display = fops#utils#path_get_basename(l:src_expand)
+        elseif argonaut#argparser#has_arg(l:parser, '--dirname')
+            let l:display = fops#utils#path_get_dirname(l:src_expand)
+        elseif argonaut#argparser#has_arg(l:parser, '--extension')
+            let l:display = fops#utils#path_get_extension(l:src_expand)
+        endif
+
+        " print the determined value
+        call fops#utils#print(l:display)
     catch
         call fops#commands#file_path_maybe_show_help(l:parser)
         call fops#utils#print_error(v:exception)
@@ -979,16 +1059,19 @@ endfunction
 " This argument indicates that the user wishes to rename the name, *excluding*
 " the extension.
 let s:arg_rename_name = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_rename_name, argonaut#argid#new('-', 'rn'))
-call argonaut#arg#add_argid(s:arg_rename_name, argonaut#argid#new('--', 'rename-name'))
+let s:arg_rename_name_argid = argonaut#argid#new('-', 'n')
+call argonaut#argid#set_show_in_autocomplete(s:arg_rename_name_argid, 0)
+call argonaut#arg#add_argid(s:arg_rename_name, s:arg_rename_name_argid)
+let s:arg_rename_name_argid = argonaut#argid#new('--', 'name')
+call argonaut#argid#set_show_in_autocomplete(s:arg_rename_name_argid, 1)
+call argonaut#arg#add_argid(s:arg_rename_name, s:arg_rename_name_argid)
 call argonaut#arg#set_description(s:arg_rename_name,
     \ "Renames the file's name, while keeping its extension as-is."
 \ )
 
-let s:arg_rename_ext = argonaut#arg#new()
-call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('-', 're'))
-call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('--', 'rename-ext'))
-call argonaut#arg#add_argid(s:arg_rename_ext, argonaut#argid#new('--', 'rename-extension'))
+" This argument indicates that the user wishes to rename the extension,
+" *excluding* the file name itself.
+let s:arg_rename_ext = deepcopy(s:arg_extension)
 call argonaut#arg#set_description(s:arg_rename_ext,
     \ "Renames the file's extension, while keeping the name as-is."
 \ )
@@ -1036,14 +1119,14 @@ function! fops#commands#file_rename(input) abort
         " by default, we'll rename the entire basename. Check the user's input
         " arguments in case something else was chosen
         let l:dst = fops#utils#path_set_basename(l:src, l:name)
-        if argonaut#argparser#has_arg(l:parser, '--rename-name')
+        if argonaut#argparser#has_arg(l:parser, '--name')
             " if only the name is to be changed, we'll keep the extension
             let l:old_ext = fops#utils#path_get_extension(l:src)
             let l:dst = fops#utils#path_remove_extension(l:src) . '.' . l:old_ext
             call fops#utils#print_debug('New file path ' .
                                       \ '(new name, same extension): "' .
                                       \ l:dst . '"')
-        elseif argonaut#argparser#has_arg(l:parser, '--rename-extension')
+        elseif argonaut#argparser#has_arg(l:parser, '--extension')
             " if only the extension is to be changed, keep the original name
             let l:old_name = fops#utils#path_get_basename(l:src)
             let l:old_name = fops#utils#path_remove_extension(l:old_name)
@@ -1094,10 +1177,10 @@ endfunction
 " This allows the user to specify the register to store the yanked text into.
 " (By default, the unnamed/clipboard register is used.)
 let s:arg_register = argonaut#arg#new()
-let s:arg_yank_argid= argonaut#argid#new('-', 'r')
+let s:arg_yank_argid = argonaut#argid#new('-', 'r')
 call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
 call argonaut#arg#add_argid(s:arg_register, s:arg_yank_argid)
-let s:arg_yank_argid= argonaut#argid#new('--', 'register')
+let s:arg_yank_argid = argonaut#argid#new('--', 'register')
 call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 1)
 call argonaut#arg#add_argid(s:arg_register, s:arg_yank_argid)
 call argonaut#arg#set_description(s:arg_register,
@@ -1106,72 +1189,25 @@ call argonaut#arg#set_description(s:arg_register,
 call argonaut#arg#set_value_required(s:arg_register, 1)
 call argonaut#arg#set_value_hint(s:arg_register, 'REGISTER_NAME')
 
-" This argument indicates that the user wishes to yank the full file path.
-let s:arg_yank_path = argonaut#arg#new()
-let s:arg_yank_argid= argonaut#argid#new('-', 'yp')
-call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
-call argonaut#arg#add_argid(s:arg_yank_path, s:arg_yank_argid)
-let s:arg_yank_argid= argonaut#argid#new('--', 'yank-path')
-call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 1)
-call argonaut#arg#add_argid(s:arg_yank_path, s:arg_yank_argid)
-call argonaut#arg#set_description(s:arg_yank_path,
-    \ "Yanks the file's full path."
-\ )
-
 " This argument indicates that the user wishes to yank the file's basename.
-let s:arg_yank_basename = argonaut#arg#new()
-let s:arg_yank_argid= argonaut#argid#new('-', 'yb')
-call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
-call argonaut#arg#add_argid(s:arg_yank_basename, s:arg_yank_argid)
-let s:arg_yank_argid= argonaut#argid#new('-', 'yn')
-call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
-call argonaut#arg#add_argid(s:arg_yank_basename, s:arg_yank_argid)
-let s:arg_yank_argid= argonaut#argid#new('--', 'yank-name')
-call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
-call argonaut#arg#add_argid(s:arg_yank_basename, s:arg_yank_argid)
-let s:arg_yank_argid= argonaut#argid#new('--', 'yank-base')
-call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
-call argonaut#arg#add_argid(s:arg_yank_basename, s:arg_yank_argid)
-let s:arg_yank_argid= argonaut#argid#new('--', 'yank-basename')
-call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 1)
-call argonaut#arg#add_argid(s:arg_yank_basename, s:arg_yank_argid)
+let s:arg_yank_basename = deepcopy(s:arg_basename)
 call argonaut#arg#set_description(s:arg_yank_basename,
     \ "Yanks the file's basename (the string appearing after the final path delimeter)."
 \ )
 
 " This argument indicates that the user wishes to yank the file's dirname.
-let s:arg_yank_dirname = argonaut#arg#new()
-let s:arg_yank_argid= argonaut#argid#new('-', 'yd')
-call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
-call argonaut#arg#add_argid(s:arg_yank_dirname, s:arg_yank_argid)
-let s:arg_yank_argid= argonaut#argid#new('--', 'yank-dir')
-call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
-call argonaut#arg#add_argid(s:arg_yank_dirname, s:arg_yank_argid)
-let s:arg_yank_argid= argonaut#argid#new('--', 'yank-dirname')
-call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 1)
-call argonaut#arg#add_argid(s:arg_yank_dirname, s:arg_yank_argid)
+let s:arg_yank_dirname = deepcopy(s:arg_dirname)
 call argonaut#arg#set_description(s:arg_yank_dirname,
     \ "Yanks the file's dirname (the full string appearing before the final path delimeter)."
 \ )
 
 " This argument indicates that the user wishes to yank the file's extension.
-let s:arg_yank_ext = argonaut#arg#new()
-let s:arg_yank_argid= argonaut#argid#new('-', 'ye')
-call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
-call argonaut#arg#add_argid(s:arg_yank_ext, s:arg_yank_argid)
-let s:arg_yank_argid= argonaut#argid#new('--', 'yank-ext')
-call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 0)
-call argonaut#arg#add_argid(s:arg_yank_ext, s:arg_yank_argid)
-let s:arg_yank_argid= argonaut#argid#new('--', 'yank-extension')
-call argonaut#argid#set_show_in_autocomplete(s:arg_yank_argid, 1)
-call argonaut#arg#add_argid(s:arg_yank_ext, s:arg_yank_argid)
+let s:arg_yank_ext = deepcopy(s:arg_extension)
 call argonaut#arg#set_description(s:arg_yank_ext,
-    \ "Yanks the file's extension."
+    \ "Yanks the file's extension (the characters appearing after the final '.' in the file name)."
 \ )
 
-
 let s:file_yank_argset = argonaut#argset#new([s:arg_help, s:arg_register])
-call argonaut#argset#add_arg(s:file_yank_argset, s:arg_yank_path)
 call argonaut#argset#add_arg(s:file_yank_argset, s:arg_yank_basename)
 call argonaut#argset#add_arg(s:file_yank_argset, s:arg_yank_dirname)
 call argonaut#argset#add_arg(s:file_yank_argset, s:arg_yank_ext)
@@ -1217,16 +1253,13 @@ function! fops#commands#file_yank(input) abort
         " but before doing so, examine the various possible arguments to
         " determine if the user wants a specific portion of the file path to
         " written into the register
-        if argonaut#argparser#has_arg(l:parser, '--yank-path')
-            let l:reg_val = l:path
-            let l:success_msg = 'File path "' . l:reg_val . '" '
-        elseif argonaut#argparser#has_arg(l:parser, '--yank-basename')
+        if argonaut#argparser#has_arg(l:parser, '--basename')
             let l:reg_val = fops#utils#path_get_basename(l:path)
             let l:success_msg = 'File basename "' . l:reg_val . '" '
-        elseif argonaut#argparser#has_arg(l:parser, '--yank-dirname')
+        elseif argonaut#argparser#has_arg(l:parser, '--dirname')
             let l:reg_val = fops#utils#path_get_dirname(l:path)
             let l:success_msg = 'File dirname "' . l:reg_val . '" '
-        elseif argonaut#argparser#has_arg(l:parser, '--yank-extension')
+        elseif argonaut#argparser#has_arg(l:parser, '--extension')
             let l:reg_val = fops#utils#path_get_extension(l:path)
             let l:success_msg = 'File extension "' . l:reg_val . '" '
         endif

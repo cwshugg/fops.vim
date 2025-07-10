@@ -84,6 +84,15 @@ file you specify:
 ```vim
 :FilePath
 :FilePath ~/.bashrc
+
+" Want to display the file's basename?
+:FilePath -b
+
+" Want to display the file's dirname?
+:FilePath -d
+
+" Want to display the file's extension?
+:FilePath -E
 ```
 
 ### `FileType` (`Ftype`)
@@ -186,10 +195,10 @@ its location in its current parent directory is unchanged.
 :FileRename newname.txt -e
 
 " Want to rename the name, but keep the same extension?
-:FileRename -rn newname
+:FileRename -n newname
 
 " Want to rename the extension, but keep the same name?
-:FileRename -re md
+:FileRename -E new_extension
 ```
 
 ### `FileYank` (`Fyank`)
@@ -208,13 +217,13 @@ register is used, but any register can be written to by specifying the
 :FileYank /path/to/file.txt -r a
 
 " Want to yank only the basename?
-:FileYank -yb
+:FileYank -b
 
 " Want to yank only the dirname?
-:FileYank -yd
+:FileYank -d
 
 " Want to yank only the extension?
-:FileYank -ye
+:FileYank -E
 ```
 
 ### `FileFind` (`Ffind`)

@@ -64,6 +64,15 @@ or the full path of any file you specify:
 >
     :FilePath
     :FilePath ~/.bashrc
+
+    " Want to display the file's basename?
+    :FilePath -b
+
+    " Want to display the file's dirname?
+    :FilePath -d
+
+    " Want to display the file's extension?
+    :FilePath -E
 <
 
 `:FileType` (`:Ftype`) - Effectively a wrapper for the Linux `file` command;
@@ -153,10 +162,10 @@ unchanged.
     :FileRename newname.txt -e
 
     " Want to rename the name, but keep the same extension?
-    :FileRename -rn newname
+    :FileRename -n newname
 
     " Want to rename the extension, but keep the same name?
-    :FileRename -re md
+    :FileRename -E md
 <
 
 `:FileYank` (`:Fyank`) - Copies aspects of a file's path into a register. (By
@@ -173,13 +182,13 @@ by specifying the `--register` argument.)
     :FileYank /path/to/file.txt -r a
     
     " Want to yank only the basename?
-    :FileYank -yb
+    :FileYank -b
     
     " Want to yank only the dirname?
-    :FileYank -yd
+    :FileYank -d
     
     " Want to yank only the extension?
-    :FileYank -ye
+    :FileYank -E
 <
 
 `:FileFind` (`:Ffind`) - Searches for files matching a specific glob-string and
